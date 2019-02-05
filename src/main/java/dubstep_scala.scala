@@ -5,7 +5,7 @@ import net.sf.jsqlparser.parser.CCJSqlParser
 import net.sf.jsqlparser.schema.Table
 import net.sf.jsqlparser.statement.select.PlainSelect
 
-class dubstep {
+class dubstep_scala {
 
   def main(args:Array[String]) ={
 
