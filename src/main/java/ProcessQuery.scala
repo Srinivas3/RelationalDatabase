@@ -8,7 +8,7 @@ import net.sf.jsqlparser.statement.select.PlainSelect
 class ProcessQuery {
 
   def main(args:Array[String]) ={
-    
+
     val scan = new Scanner(System.in)
 
     while ( {
