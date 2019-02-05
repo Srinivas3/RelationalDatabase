@@ -13,7 +13,6 @@ public class dubstep {
 
     public static void main(String args[])throws ParseException, FileNotFoundException {
 
-        System.out.println("entered line 14");
         Scanner scan = new Scanner(System.in);
 
         while (scan.hasNextLine()){
@@ -24,7 +23,6 @@ public class dubstep {
             Statement query = parser.Statement();
             System.out.println(query);
             if (query instanceof Select){
-                System.out.println("entered line 25");
                 SelectBody body = ((Select) query).getSelectBody();
 
                 if (((PlainSelect) body).getFromItem() instanceof Table){
@@ -33,7 +31,6 @@ public class dubstep {
                     String tableName = table.getName();
                     try{
                         File f = new File("data/" + tableName +".csv ");
-//                        System.out.println(f.getAbsolutePath());
                         BufferedReader reader = new BufferedReader(new FileReader(f.getAbsoluteFile()));
 
                         String line = null;
