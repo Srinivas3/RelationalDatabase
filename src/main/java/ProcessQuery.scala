@@ -1,10 +1,9 @@
-import java.io.{File, FileInputStream, FileReader, StringReader}
+import java.io.{File, StringReader}
 import java.util.Scanner
 
 import net.sf.jsqlparser.parser.CCJSqlParser
-import net.sf.jsqlparser.statement.Statement
-import net.sf.jsqlparser.statement.select.PlainSelect
 import net.sf.jsqlparser.schema.Table
+import net.sf.jsqlparser.statement.select.PlainSelect
 
 class ProcessQuery {
 
@@ -31,9 +30,7 @@ class ProcessQuery {
           case table : Table => {
 
             val tableName = table.getName()
-            import java.io.BufferedReader
-            import java.io.FileReader
-            import java.io.IOException
+            import java.io.{BufferedReader, FileReader, IOException}
 
             var reader :BufferedReader = null
             try {
