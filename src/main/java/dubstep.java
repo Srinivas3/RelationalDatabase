@@ -17,11 +17,11 @@ public class dubstep {
 
         while (scan.hasNextLine()){
             String next = scan.nextLine();
-            System.out.println(next);
+//            System.out.println(next);
             StringReader input = new StringReader(next);
             CCJSqlParser parser = new CCJSqlParser(input);
             Statement query = parser.Statement();
-            System.out.println(query);
+//            System.out.println(query);
             if (query instanceof Select){
                 SelectBody body = ((Select) query).getSelectBody();
 
