@@ -13,7 +13,7 @@ import net.sf.jsqlparser.statement.select.SelectBody;
 
 public class Main {
 
-    public static void main(String args[])throws ParseException, FileNotFoundException, Exception {
+    public static void main(String args[])throws ParseException, FileNotFoundException {
 
         Scanner scan = new Scanner(System.in);
 
@@ -31,29 +31,17 @@ public class Main {
                     Table table = (Table ) ((PlainSelect) body).getFromItem();
 
                     String tableName = table.getName();
+                    try{
+                        File f = new File("data/" + tableName +".csv ");
+                        BufferedReader reader = new BufferedReader(new FileReader(f));
 
-
-                    File f = new File("data/" + tableName +".csv ");
-                    BufferedReader reader = new BufferedReader(new FileReader(f));
-
-                    String line = null;
-                    while ((line = reader.readLine()) != null){
-                        System.out.println(line);
+                        String line = null;
+                        while ((line = reader.readLine()) != null){
+                            System.out.println(line);
+                        }
+                    } catch (Exception e){
+                        e.printStackTrace();
                     }
-
-
-
-//                    try{
-//                        File f = new File("data/" + tableName +".csv ");
-//                        BufferedReader reader = new BufferedReader(new FileReader(f));
-//
-//                        String line = null;
-//                        while ((line = reader.readLine()) != null){
-//                            System.out.println(line);
-//                        }
-//                    } catch (Exception e){
-//                        e.printStackTrace();
-//                    }
 
                 }
 
