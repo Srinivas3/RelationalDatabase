@@ -32,7 +32,7 @@ public class Main {
 
                     String tableName = table.getName();
                     try{
-                        File f = new File("data/" + tableName +".csv ");
+                        File f = new File("/data/" + tableName +".csv ");
                         BufferedReader reader = new BufferedReader(new FileReader(f));
 
                         String line = null;
