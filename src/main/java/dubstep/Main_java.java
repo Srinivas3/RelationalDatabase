@@ -11,7 +11,7 @@ import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
 
-public class Main {
+public class Main_java {
 
     public static void main(String args[])throws ParseException, FileNotFoundException {
 
