@@ -7,7 +7,7 @@ import net.sf.jsqlparser.parser.CCJSqlParser
 import net.sf.jsqlparser.schema.Table
 import net.sf.jsqlparser.statement.select.{PlainSelect, Select, SelectBody}
 
-object Main {
+object Main_scala {
 
   def main(args: Array[String]): Unit = {
 
