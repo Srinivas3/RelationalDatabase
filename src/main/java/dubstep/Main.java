@@ -23,6 +23,7 @@ public class Main {
             StringReader input = new StringReader(next);
             CCJSqlParser parser = new CCJSqlParser(input);
             Statement query = parser.Statement();
+
 //            System.out.println(query);
             if (query instanceof Select){
                 SelectBody body = ((Select) query).getSelectBody();
