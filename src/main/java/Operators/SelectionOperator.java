@@ -34,6 +34,7 @@ public class SelectionOperator extends Eval implements Operator {
             }
             if (whereCond.toBool())
                 return childTuple;
+
         }
         return null;
     }

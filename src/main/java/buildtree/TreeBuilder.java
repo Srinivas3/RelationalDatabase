@@ -12,13 +12,26 @@ public class TreeBuilder {
 
     public Operator buildTree(PlainSelect plainSelect){
         FromItem fromItem = plainSelect.getFromItem();
+
         Operator operator = handleFromItem(fromItem);
+
+        List<Join> joins = plainSelect.getJoins();
+        if (joins != null){
+            for (Join join: joins)
+                operator = handleJoin(operator,join);
+        }
+
         Expression expression = plainSelect.getWhere();
         if (expression != null)
             operator = new SelectionOperator(expression,operator);
         List<SelectItem> selectItems = plainSelect.getSelectItems();
         operator = new ProjectionOperator(selectItems,operator);
         return operator;
+    }
+    public Operator handleJoin(Operator leftOperator, Join join){
+        FromItem rightFromItem = join.getRightItem();
+        Operator rightOperator = handleFromItem(rightFromItem);
+        return new JoinOperator(leftOperator,rightOperator,join);
     }
     public Operator buildTree(Union union){
         List<PlainSelect> plainSelects =  union.getPlainSelects();
@@ -42,7 +55,9 @@ public class TreeBuilder {
             return handleSelectBody(subselect.getSelectBody());
         }
         else if (fromItem instanceof SubJoin){
-            return null;
+            SubJoin subJoin = (SubJoin)fromItem;
+            Operator leftOperator = handleFromItem(subJoin.getLeft());
+            return handleJoin(leftOperator,subJoin.getJoin());
         }
         else{
             return null;

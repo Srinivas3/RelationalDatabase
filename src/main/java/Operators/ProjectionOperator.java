@@ -4,7 +4,9 @@ import net.sf.jsqlparser.eval.Eval;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.select.AllColumns;
+import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import schema.TableUtils;
@@ -22,6 +24,7 @@ public class ProjectionOperator extends Eval implements Operator{
         this.child = child;
         this.selectItems = selectItems;
     }
+
     public PrimitiveValue eval(Column x){
 
         String colName = x.getColumnName();
@@ -51,18 +54,30 @@ public class ProjectionOperator extends Eval implements Operator{
                 }
                 tuple.put(alias,primVal);
             }
-            else if (selectItem instanceof AllColumns){
+            else if (selectItem instanceof AllColumns)
                 return childTuple;
-            }
-            else{
+            else if (selectItem instanceof AllTableColumns)
+                insertAllCols(tuple,(AllTableColumns)selectItem);
+            else
                 return null;
-            }
+
         }
 
         return tuple;
 
     }
     public void init(){
+        child.init();
+
+    }
+    private void insertAllCols(Map<String,PrimitiveValue> tuple,AllTableColumns allTableColumns){
+        String tableName = allTableColumns.getTable().getName();
+        for (String key : childTuple.keySet()){
+            String keyTableName = key.split("\\.")[0];
+            if (keyTableName.equals(tableName))
+                tuple.put(key,childTuple.get(key));
+        }
+
 
     }
 }

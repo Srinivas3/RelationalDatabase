@@ -47,6 +47,7 @@ public class Main {
     }
     public static void displayOuput(Operator operator){
         Map<String, PrimitiveValue> tuple;
+        int counter = 1;
         while((tuple = operator.next())!= null ){
             StringBuilder sb = new StringBuilder();
             Set<String> keySet = tuple.keySet();
@@ -57,7 +58,10 @@ public class Main {
                     sb.append("|");
                 i += 1;
             }
+            System.out.print(counter);
+            System.out.print(". ");
             System.out.println(sb.toString());
+            counter++;
         }
     }
 
