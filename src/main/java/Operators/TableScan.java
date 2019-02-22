@@ -19,7 +19,7 @@ public class TableScan implements Operator{
     String tableName;
     public TableScan(Table table){
         this.table = table;
-        this.filePath = "data/"+ table.getName().toLowerCase() + ".csv";
+        this.filePath = "data/"+ table.getName() + ".csv";
         this.colDefs = TableUtils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();
         setTableName();
