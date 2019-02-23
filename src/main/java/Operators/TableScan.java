@@ -11,6 +11,7 @@ import java.util.Map;
 import java.io.*;
 
 public class TableScan implements Operator{
+    static final String format=".csv";
     Table table;
     String filePath;
     BufferedReader br;
@@ -19,7 +20,7 @@ public class TableScan implements Operator{
     String tableName;
     public TableScan(Table table){
         this.table = table;
-        this.filePath = "data/"+ table.getName() + ".csv";
+        this.filePath = "data/"+ table.getName() + format;
         this.colDefs = TableUtils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();
         setTableName();
