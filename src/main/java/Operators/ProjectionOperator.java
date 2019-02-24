@@ -29,7 +29,7 @@ public class ProjectionOperator extends Eval implements Operator{
 
         String colName = x.getColumnName();
         String tableName = x.getTable().getName();
-        this.defaultAlias = colName;
+        this.defaultAlias = x.toString();
         return TableUtils.getColValue(tableName,colName,childTuple);
     }
     public Map<String,PrimitiveValue> next(){
