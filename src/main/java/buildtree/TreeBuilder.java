@@ -23,9 +23,12 @@ public class TreeBuilder {
 
         Expression expression = plainSelect.getWhere();
         if (expression != null)
-            operator = new SelectionOperator(expression,operator);
+            operator = new SelectionOperator(expression, operator);
         List<SelectItem> selectItems = plainSelect.getSelectItems();
-        operator = new ProjectionOperator(selectItems,operator);
+        operator = new ProjectionOperator(selectItems, operator);
+        if (plainSelect.getLimit() != null){
+            operator = new LimitOperator(plainSelect.getLimit(), operator);
+        }
         return operator;
     }
     public Operator handleJoin(Operator leftOperator, Join join){
