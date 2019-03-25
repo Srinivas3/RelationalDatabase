@@ -1,12 +1,8 @@
 package operators;
 
-import aggregators.AggregatePattern;
-import aggregators.SumAggregator;
+import aggregators.*;
 import net.sf.jsqlparser.eval.Eval;
-import net.sf.jsqlparser.expression.DateValue;
-import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.Function;
-import net.sf.jsqlparser.expression.PrimitiveValue;
+import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
@@ -36,10 +32,20 @@ public class ProjectionOperator extends Eval implements Operator{
             } else {
                 return new DateValue(this.eval((Expression)args.get(0)).toRawString());
             }
-        } else if ("SUM".equalsIgnoreCase(fn)){
+        } else if ("SUM".equalsIgnoreCase(fn) || "MIN".equalsIgnoreCase(fn) || "MAX".equalsIgnoreCase(fn) || "AVG".equalsIgnoreCase(fn)){
             Expression expression = function.getParameters().getExpressions().get(0);
             PrimitiveValue value = eval(expression);
             return value;
+
+        } else if ("COUNT".equalsIgnoreCase(fn)){
+
+            if(function.isAllColumns()!=true){
+                Expression expression = function.getParameters().getExpressions().get(0);
+                PrimitiveValue value = eval(expression);
+                return value;
+            }else {
+                return new LongValue(1);
+            }
 
         } else {
             return this.missing("Function:" + fn);
@@ -108,16 +114,7 @@ public class ProjectionOperator extends Eval implements Operator{
                 }
                 Function function = (Function) expression;
                 String str=function.getName();
-                if (function.getName().equalsIgnoreCase("SUM")){
-                    if(aggregators.get(alias)==null){
-                        AggregatePattern sumAggregator = new SumAggregator();
-                        aggregators.put(alias, sumAggregator);
-                    }
-
-                    aggregators.get(alias).fold(value);
-
-
-                }
+                handleAggregator(aggregators, alias, value, function);
             }
         }
 
@@ -130,6 +127,37 @@ public class ProjectionOperator extends Eval implements Operator{
         }
 
         return tuple;
+    }
+
+    private void handleAggregator(Map<String, AggregatePattern> aggregators, String alias, PrimitiveValue value, Function function) {
+        if (function.getName().equalsIgnoreCase("SUM")){
+            if(aggregators.get(alias)==null){
+                AggregatePattern sumAggregator = new SumAggregator();
+                aggregators.put(alias, sumAggregator);
+            }
+        } else if(function.getName().equalsIgnoreCase("COUNT")){
+            if(aggregators.get(alias)==null){
+                AggregatePattern countAggregator = new CountAggregator();
+                aggregators.put(alias, countAggregator);
+            }
+        } else if(function.getName().equalsIgnoreCase("MIN")){
+            if(aggregators.get(alias)==null){
+                AggregatePattern minAggregator = new MinAggregator();
+                aggregators.put(alias, minAggregator);
+            }
+        } else if(function.getName().equalsIgnoreCase("MAX")){
+            if(aggregators.get(alias)==null){
+                AggregatePattern maxAggregator = new MaxAggregator();
+                aggregators.put(alias, maxAggregator);
+            }
+        } else if(function.getName().equalsIgnoreCase("AVG")){
+            if(aggregators.get(alias)==null){
+                AggregatePattern avgAggregator = new AverageAggregator();
+                aggregators.put(alias, avgAggregator);
+            }
+        }
+        aggregators.get(alias).fold(value);
+
     }
 
     private Map<String, PrimitiveValue> volcanoNext() {

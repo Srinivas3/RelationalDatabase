@@ -72,7 +72,7 @@ public class TableScan implements Operator{
             return new StringValue(value);
         else if (dataType.equals("int"))
             return new LongValue(value);
-        else if (dataType.equals("decimal"))
+        else if (dataType.equals("decimal") || dataType.equals("float"))
             return new DoubleValue(value);
         else if (dataType.equals("date"))
             return new DateValue(value);
