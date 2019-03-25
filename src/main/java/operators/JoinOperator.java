@@ -1,4 +1,4 @@
-package Operators;
+package operators;
 
 import net.sf.jsqlparser.eval.Eval;
 import net.sf.jsqlparser.expression.PrimitiveValue;

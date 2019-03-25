@@ -1,4 +1,4 @@
-package Operators;
+package operators;
 
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Table;
@@ -11,7 +11,7 @@ import java.util.Map;
 import java.io.*;
 
 public class TableScan implements Operator{
-    static final String format=".csv";
+    static final String format=".dat";
     Table table;
     String filePath;
     BufferedReader br;

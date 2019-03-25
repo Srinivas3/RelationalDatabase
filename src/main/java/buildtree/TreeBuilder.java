@@ -1,6 +1,6 @@
 package buildtree;
 
-import Operators.*;
+import operators.*;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;

@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import Operators.Operator;
+import operators.Operator;
 import buildtree.TreeBuilder;
 import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -26,7 +26,7 @@ public class Main {
         while ((statement = parser.Statement())!= null){
             if (statement instanceof Select){
                 Operator root = handleSelect((Select)statement);
-                displayOuput(root);
+                displayOutput(root);
             }
             else if (statement instanceof CreateTable){
                 CreateTable createTable = (CreateTable)statement;
@@ -45,7 +45,7 @@ public class Main {
         SelectBody selectBody = select.getSelectBody();
         return treeBuilder.handleSelectBody(selectBody);
     }
-    public static void displayOuput(Operator operator){
+    public static void displayOutput(Operator operator){
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
         while((tuple = operator.next())!= null ){

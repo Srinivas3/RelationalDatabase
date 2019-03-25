@@ -1,8 +1,6 @@
-package Operators;
+package operators;
 
 import net.sf.jsqlparser.expression.PrimitiveValue;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.statement.select.Union;
 
 import java.util.Map;
 
