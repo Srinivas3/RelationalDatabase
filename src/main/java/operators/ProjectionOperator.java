@@ -113,7 +113,7 @@ public class ProjectionOperator extends Eval implements Operator{
                     e.printStackTrace();
                 }
                 Function function = (Function) expression;
-                String str=function.getName();
+                String str = function.getName();
                 handleAggregator(aggregators, alias, value, function);
             }
         }

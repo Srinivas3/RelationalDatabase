@@ -1,5 +1,6 @@
 package buildtree;
 
+import net.sf.jsqlparser.schema.Column;
 import operators.*;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
@@ -24,8 +25,22 @@ public class TreeBuilder {
         Expression expression = plainSelect.getWhere();
         if (expression != null)
             operator = new SelectionOperator(expression, operator);
+
+        List<Column> groupByColumns = plainSelect.getGroupByColumnReferences();
         List<SelectItem> selectItems = plainSelect.getSelectItems();
-        operator = new ProjectionOperator(selectItems, operator);
+        if(groupByColumns!=null && groupByColumns.size()!=0){
+            operator = new InMemGroupByOperator(groupByColumns, selectItems, operator);
+        }
+
+        List<OrderByElement> orderByElements = plainSelect.getOrderByElements();
+        if(orderByElements!=null && orderByElements.size()!=0){
+            operator = new OrderByOperator(orderByElements,operator);
+        }
+
+        if(groupByColumns==null || groupByColumns.size()==0){
+            operator = new ProjectionOperator(selectItems, operator);
+        }
+
         if (plainSelect.getLimit() != null){
             operator = new LimitOperator(plainSelect.getLimit(), operator);
         }

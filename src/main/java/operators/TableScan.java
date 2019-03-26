@@ -11,7 +11,7 @@ import java.util.Map;
 import java.io.*;
 
 public class TableScan implements Operator{
-    static final String format=".dat";
+    static final String format=".csv";
     Table table;
     String filePath;
     BufferedReader br;
