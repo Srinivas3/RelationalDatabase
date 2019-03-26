@@ -11,10 +11,7 @@ import net.sf.jsqlparser.statement.select.SelectItem;
 import schema.TableUtils;
 
 import java.sql.SQLException;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class ProjectionOperator extends Eval implements Operator{
     List<SelectItem> selectItems;
@@ -22,6 +19,7 @@ public class ProjectionOperator extends Eval implements Operator{
     Map<String,PrimitiveValue> childTuple;
     String defaultAlias;
     boolean isAggregate = false;
+    boolean isFirstCall = false;
 
     public PrimitiveValue eval(Function function) throws SQLException {
         String fn = function.getName().toUpperCase();
@@ -77,87 +75,73 @@ public class ProjectionOperator extends Eval implements Operator{
         return TableUtils.getColValue(tableName, colName, childTuple);
     }
     public Map<String, PrimitiveValue> next(){
-
-        if (!isAggregate){
-            return volcanoNext();
-        } else {
-            isAggregate=false;
-            return aggregateNext();
+        if (isAggregate){
+            if (isFirstCall){
+                isFirstCall = false;
+                return aggregateNext();
+            }
+            else
+                return null;
         }
-
-
+        else{
+            return volcanoNext();
+        }
     }
 
     private Map<String, PrimitiveValue> aggregateNext(){
+        childTuple = child.next();
+        if (childTuple == null)
+            return null;
 
-        AggregatePattern aggregator = null;
         Map<String, AggregatePattern> aggregators= new LinkedHashMap<String, AggregatePattern>();
-        Map<String, PrimitiveValue> tuple = new LinkedHashMap<String, PrimitiveValue>();
-
-        while ((this.childTuple = child.next()) != null ){
-            int count=0;
-            for(SelectItem selectItem : selectItems){
+        Map<String,Function> aggFunctions = new LinkedHashMap<String,Function>();
+        int count = 0;
+        for (SelectItem selectItem: selectItems){
+            SelectExpressionItem selectExpressionItem = (SelectExpressionItem)selectItem;
+            String alias = selectExpressionItem.getAlias();
+            if (alias == null){
+                alias = selectExpressionItem.toString() + "_" + Integer.toString(count);
                 count++;
-                SelectExpressionItem selectExpressionItem = (SelectExpressionItem) selectItem;
-                String alias = selectExpressionItem.getAlias();
-                if (alias == null){
-                    selectExpressionItem.setAlias(selectExpressionItem.toString() + "_" + Integer.toString(count));
-                    alias = selectExpressionItem.getAlias();
-                }
-
-                Expression expression =  selectExpressionItem.getExpression();
+            }
+            Function functionExp = (Function)selectExpressionItem.getExpression();
+            AggregatePattern aggregator = getAggregatorPattern(functionExp.getName());
+            aggFunctions.put(alias,functionExp);
+            aggregators.put(alias,aggregator);
+        }
+        Set<String> aliases = aggregators.keySet();
+        while (childTuple != null){
+            for (String alias: aliases){
                 PrimitiveValue value = null;
                 try {
-                    value = eval(expression);
+                    value = eval(aggFunctions.get(alias));
                 } catch (SQLException e) {
                     e.printStackTrace();
                 }
-                Function function = (Function) expression;
-                String str = function.getName();
-                handleAggregator(aggregators, alias, value, function);
+                aggregators.get(alias).fold(value);
             }
+
+            childTuple = child.next();
         }
-
-        for(SelectItem selectItem : selectItems){
-
-            SelectExpressionItem selectExpressionItem = (SelectExpressionItem) selectItem;
-            String alias = selectExpressionItem.getAlias();
-            PrimitiveValue finalValue = aggregators.get(alias).getAggregate();
-            tuple.put(alias,finalValue);
+        Map<String,PrimitiveValue> outTuple = new LinkedHashMap<String,PrimitiveValue>();
+        for (String alias: aliases){
+            outTuple.put(alias,aggregators.get(alias).getAggregate());
         }
+        return outTuple;
 
-        return tuple;
     }
-
-    private void handleAggregator(Map<String, AggregatePattern> aggregators, String alias, PrimitiveValue value, Function function) {
-        if (function.getName().equalsIgnoreCase("SUM")){
-            if(aggregators.get(alias)==null){
-                AggregatePattern sumAggregator = new SumAggregator();
-                aggregators.put(alias, sumAggregator);
-            }
-        } else if(function.getName().equalsIgnoreCase("COUNT")){
-            if(aggregators.get(alias)==null){
-                AggregatePattern countAggregator = new CountAggregator();
-                aggregators.put(alias, countAggregator);
-            }
-        } else if(function.getName().equalsIgnoreCase("MIN")){
-            if(aggregators.get(alias)==null){
-                AggregatePattern minAggregator = new MinAggregator();
-                aggregators.put(alias, minAggregator);
-            }
-        } else if(function.getName().equalsIgnoreCase("MAX")){
-            if(aggregators.get(alias)==null){
-                AggregatePattern maxAggregator = new MaxAggregator();
-                aggregators.put(alias, maxAggregator);
-            }
-        } else if(function.getName().equalsIgnoreCase("AVG")){
-            if(aggregators.get(alias)==null){
-                AggregatePattern avgAggregator = new AverageAggregator();
-                aggregators.put(alias, avgAggregator);
-            }
-        }
-        aggregators.get(alias).fold(value);
-
+    private AggregatePattern getAggregatorPattern(String functionName) {
+        if (functionName.equalsIgnoreCase("SUM"))
+            return new SumAggregator();
+        else if(functionName.equalsIgnoreCase("COUNT"))
+            return new CountAggregator();
+        else if(functionName.equalsIgnoreCase("MIN"))
+            return new MinAggregator();
+        else if(functionName.equalsIgnoreCase("MAX"))
+            return new MaxAggregator();
+        else if(functionName.equalsIgnoreCase("AVG"))
+            return new AverageAggregator();
+        else
+            return null;
     }
 
     private Map<String, PrimitiveValue> volcanoNext() {
@@ -196,7 +180,6 @@ public class ProjectionOperator extends Eval implements Operator{
 
     public void init(){
         child.init();
-
     }
     private void insertAllCols(Map<String,PrimitiveValue> tuple,AllTableColumns allTableColumns){
         String tableName = allTableColumns.getTable().getName();
