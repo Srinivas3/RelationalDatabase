@@ -68,7 +68,7 @@ public class OrderByOperator implements Operator {
         fileNameCounter = 0;
         directoryName = "sorted_files";
         new File(directoryName).mkdir();
-        maxInMemoryTuples = 5;
+        maxInMemoryTuples = 10000;
         while (childTuple != null) {
             populateChildTuples();
             String fileName = getNewFileName();
@@ -254,7 +254,7 @@ public class OrderByOperator implements Operator {
             this.tupleOis = tupleOis;
         }
 
-        @Override
+
         public int compareTo(PriorityQueueTuple o) {
             return compareTuples.compare(this.tuple, o.tuple);
         }
