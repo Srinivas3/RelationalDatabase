@@ -6,7 +6,7 @@ import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
-import schema.TableUtils;
+import schema.Utils;
 
 import java.sql.SQLException;
 import java.util.Iterator;
@@ -174,7 +174,7 @@ public class InMemGroupByOperator extends Eval implements Operator {
 
         String colName = x.getColumnName();
         String tableName = x.getTable().getName();
-        return TableUtils.getColValue(tableName, colName, childTuple);
+        return Utils.getColValue(tableName, colName, childTuple);
     }
 
     public PrimitiveValue eval(Function function) throws SQLException {

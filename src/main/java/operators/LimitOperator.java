@@ -23,13 +23,10 @@ public class LimitOperator implements Operator {
             childTuple = child.next();
             offset--;
         }
-
         if(childTuple != null && rowCount > 0){
             rowCount--;
             return childTuple;
         }
-
-
         return null;
     }
 

@@ -15,11 +15,18 @@ import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
-import schema.TableUtils;
+import schema.Utils;
 
 public class Main {
 
     public static void main(String args[])throws ParseException, FileNotFoundException {
+
+        if (args[0].equalsIgnoreCase("--in-mem")){
+            Utils.inMemoryMode = true;
+        } else {
+            Utils.inMemoryMode = false;
+        }
+
         System.out.print("$>");
         CCJSqlParser parser = new CCJSqlParser(System.in);
         Statement statement;
@@ -32,7 +39,7 @@ public class Main {
                 CreateTable createTable = (CreateTable)statement;
                 String tableName = createTable.getTable().getName();
                 List<ColumnDefinition> colDefs = createTable.getColumnDefinitions();
-                TableUtils.nameToColDefs.put(tableName,colDefs);
+                Utils.nameToColDefs.put(tableName,colDefs);
             }
             else{
                 System.out.println("Invalid Query");

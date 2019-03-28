@@ -5,7 +5,7 @@ import net.sf.jsqlparser.expression.BooleanValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.schema.Column;
-import schema.TableUtils;
+import schema.Utils;
 
 import java.util.Map;
 
@@ -16,7 +16,7 @@ public class SelectionOperator extends Eval implements Operator {
     public PrimitiveValue eval(Column x) {
         String colName = x.getColumnName();
         String tableName = x.getTable().getName();
-        return TableUtils.getColValue(tableName, colName, childTuple);
+        return Utils.getColValue(tableName, colName, childTuple);
     }
     public SelectionOperator(Expression expression,Operator child){
         this.child = child;

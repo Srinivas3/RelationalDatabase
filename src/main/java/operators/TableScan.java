@@ -3,7 +3,7 @@ package operators;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
-import schema.TableUtils;
+import schema.Utils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.Map;
 import java.io.*;
 
 public class TableScan implements Operator{
-    static final String format=".csv";
+    static final String format=".dat";
     Table table;
     String filePath;
     BufferedReader br;
@@ -21,7 +21,7 @@ public class TableScan implements Operator{
     public TableScan(Table table){
         this.table = table;
         this.filePath = "data/"+ table.getName() + format;
-        this.colDefs = TableUtils.nameToColDefs.get(table.getName());
+        this.colDefs = Utils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();
         setTableName();
         init();

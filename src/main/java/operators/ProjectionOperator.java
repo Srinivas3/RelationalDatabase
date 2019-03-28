@@ -8,7 +8,7 @@ import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
-import schema.TableUtils;
+import schema.Utils;
 
 import java.sql.SQLException;
 import java.util.*;
@@ -19,7 +19,7 @@ public class ProjectionOperator extends Eval implements Operator{
     Map<String,PrimitiveValue> childTuple;
     String defaultAlias;
     boolean isAggregate = false;
-    boolean isFirstCall = false;
+    boolean isFirstCall = true;
 
     public PrimitiveValue eval(Function function) throws SQLException {
         String fn = function.getName().toUpperCase();
@@ -72,7 +72,7 @@ public class ProjectionOperator extends Eval implements Operator{
         String colName = x.getColumnName();
         String tableName = x.getTable().getName();
         this.defaultAlias = x.toString();
-        return TableUtils.getColValue(tableName, colName, childTuple);
+        return Utils.getColValue(tableName, colName, childTuple);
     }
     public Map<String, PrimitiveValue> next(){
         if (isAggregate){
@@ -119,19 +119,18 @@ public class ProjectionOperator extends Eval implements Operator{
                 }
                 aggregators.get(alias).fold(value);
             }
-
             childTuple = child.next();
         }
         Map<String,PrimitiveValue> outTuple = new LinkedHashMap<String,PrimitiveValue>();
         for (String alias: aliases){
-            outTuple.put(alias,aggregators.get(alias).getAggregate());
+                outTuple.put(alias,aggregators.get(alias).getAggregate());
         }
         return outTuple;
 
     }
     private AggregatePattern getAggregatorPattern(String functionName) {
         if (functionName.equalsIgnoreCase("SUM"))
-            return new SumAggregator();
+           return new SumAggregator();
         else if(functionName.equalsIgnoreCase("COUNT"))
             return new CountAggregator();
         else if(functionName.equalsIgnoreCase("MIN"))
