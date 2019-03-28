@@ -20,6 +20,7 @@ public class OrderByOperator implements Operator {
     Map<String, Integer> colNameToIdx;
     Map<Integer, String> idxToColName;
     List<List<PrimitiveValue>> serializedChildTuples;
+    Map<String, PrimitiveValue> firstTuple;
     boolean isFirstCall;
     long maxInMemoryTuples;
     List<String> sortedFiles;
@@ -40,6 +41,11 @@ public class OrderByOperator implements Operator {
         compareTuples = new CompareTuples();
     }
 
+    public OrderByOperator(List<OrderByElement> orderByElements, Operator operator, Map<String, PrimitiveValue> firstTuple) {
+        this(orderByElements, operator);
+        this.firstTuple = firstTuple;
+    }
+
     public Map<String, PrimitiveValue> next() {
         if (Utils.inMemoryMode)
             return inMemorySortNext();
@@ -51,19 +57,22 @@ public class OrderByOperator implements Operator {
         if (isFirstCall) {
             isFirstCall = false;
             maxInMemoryTuples = 1000000;
-            serializedChildTuples = new ArrayList<List<PrimitiveValue>>();
             populateChildTuples();
             Collections.sort(serializedChildTuples, compareTuples);
         }
-        if (++counter < serializedChildTuples.size())
-            return Utils.deserialize(serializedChildTuples.get(counter), idxToColName);
-        else
+        if (++counter < serializedChildTuples.size()){
+            return Utils.convertToMap(serializedChildTuples.get(counter), idxToColName);
+        }
+        else{
+            serializedChildTuples = null;
             return null;
+        }
+
     }
 
     private Map<String, PrimitiveValue> onDiskSortNext() {
         if (!isFirstCall)
-            return Utils.deserialize(getNextValueAndUpdateQueue(), idxToColName);
+            return Utils.convertToMap(getNextValueAndUpdateQueue(), idxToColName);
         isFirstCall = false;
         fileNameCounter = 0;
         directoryName = "sorted_files";
@@ -76,7 +85,7 @@ public class OrderByOperator implements Operator {
         }
         serializedChildTuples = null;
         initPriorityQueue();
-        return Utils.deserialize(getNextValueAndUpdateQueue(), idxToColName);
+        return Utils.convertToMap(getNextValueAndUpdateQueue(), idxToColName);
     }
 
 
@@ -168,8 +177,12 @@ public class OrderByOperator implements Operator {
     private void populateChildTuples() {
         long counter = 0;
         serializedChildTuples = new ArrayList<List<PrimitiveValue>>();
+        if (firstTuple != null){
+            serializedChildTuples.add(Utils.convertToList(firstTuple, colNameToIdx));
+            firstTuple = null;
+        }
         while (childTuple != null && counter < maxInMemoryTuples) {
-            List<PrimitiveValue> serializedChildTuple = Utils.serialize(childTuple, colNameToIdx);
+            List<PrimitiveValue> serializedChildTuple = Utils.convertToList(childTuple, colNameToIdx);
             serializedChildTuples.add(serializedChildTuple);
             childTuple = child.next();
             counter++;
@@ -183,11 +196,16 @@ public class OrderByOperator implements Operator {
         Map<String, PrimitiveValue> currTuple;
 
         public int compare(List<PrimitiveValue> o1, List<PrimitiveValue> o2) {
+            return compareMaps(Utils.convertToMap(o1, idxToColName), Utils.convertToMap(o2, idxToColName));
+        }
+
+        public int compareMaps(Map<String, PrimitiveValue> o1, Map<String, PrimitiveValue> o2) {
             for (OrderByElement element : orderByElements) {
                 Expression expression = element.getExpression();
                 boolean isAsc = element.isAsc();
-                PrimitiveValue value1 = evaluate(expression, Utils.deserialize(o1, idxToColName));
-                PrimitiveValue value2 = evaluate(expression, Utils.deserialize(o2, idxToColName));
+
+                PrimitiveValue value1 = evaluate(expression, o1);
+                PrimitiveValue value2 = evaluate(expression, o2);
                 if (value1.getType().equals(PrimitiveType.DOUBLE)) {
                     try {
                         double val1 = value1.toDouble();

@@ -28,10 +28,11 @@ public class Utils {
         return null;
     }
 
-    public static Map<String, PrimitiveValue> deserialize(List<PrimitiveValue> serializedTuple, Map<Integer, String> idxToColName) {
+    public static Map<String, PrimitiveValue> convertToMap(List<PrimitiveValue> serializedTuple, Map<Integer, String> idxToColName) {
         if (serializedTuple == null)
             return null;
         int i = 0;
+        //TODO don't create a new map every time this method is called, instead pass the map as an argument
         Map<String, PrimitiveValue> deserializedTuple = new LinkedHashMap<String, PrimitiveValue>();
         for (PrimitiveValue colVal : serializedTuple) {
             deserializedTuple.put(idxToColName.get(i), colVal);
@@ -40,9 +41,11 @@ public class Utils {
         return deserializedTuple;
     }
 
-    public static List<PrimitiveValue> serialize(Map<String, PrimitiveValue> deserializedTuple, Map<String, Integer> colNameToIdx) {
+    public static List<PrimitiveValue> convertToList(Map<String, PrimitiveValue> deserializedTuple,
+                                                     Map<String, Integer> colNameToIdx) {
         if (deserializedTuple == null)
             return null;
+        //TODO don't create a new map every time this method is called, instead pass the map as an argument
         List<PrimitiveValue> serializedTuple = new ArrayList<PrimitiveValue>();
         Set<String> colNames = colNameToIdx.keySet();
         for (String colName : colNames)

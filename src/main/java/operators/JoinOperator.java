@@ -6,7 +6,9 @@ import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.OrderByElement;
 import schema.Utils;
 
 import java.util.LinkedHashMap;
@@ -63,6 +65,7 @@ public class JoinOperator extends Eval implements Operator {
         idxToColName = new LinkedHashMap<Integer, String>();
         Utils.fillColIdx(leftChildTuple, colNameToIdx, idxToColName);
     }
+
     private Map<String, PrimitiveValue> equiJoinNext() {
         if (isFirstCall) {
             joinColPairs = new ArrayList<List<String>>();
@@ -73,7 +76,7 @@ public class JoinOperator extends Eval implements Operator {
         if (Utils.inMemoryMode)
             return onePassHashJoinNext();
         else
-            return onePassHashJoinNext();
+            return sortMergeJoinNext();
     }
 
     private void parseExpressionAndUpdateColPairs(Expression onExpression) {
@@ -109,16 +112,57 @@ public class JoinOperator extends Eval implements Operator {
         if (Utils.inMemoryMode)
             return onePassHashJoinNext();
         else
-            return onePassHashJoinNext();
+            return sortMergeJoinNext();
 
 
     }
 
-    private Map<String, PrimitiveValue> sortMergeJoinNext(List<List<String>> joinColPairs) {
+    private Map<String, PrimitiveValue> sortMergeJoinNext() {
+        List<OrderByElement> leftOrderByElements = createOrderByElements(0);
+        List<OrderByElement> rightOrderByElements = createOrderByElements(1);
+
+        OrderByOperator orderedLeftChild = new OrderByOperator(leftOrderByElements, leftChild, leftChildTuple);
+        OrderByOperator orderedRightChild = new OrderByOperator(rightOrderByElements, rightChild, rightChildTuple);
+
+        //Utils.convertToList()
+        //orderedLeftChild.compareTuples.compareMaps();
+
         return null;
     }
 
+
+
+    private List<OrderByElement> createOrderByElements(int index) {
+        List<OrderByElement> orderByElements = new ArrayList<OrderByElement>();
+        for (List<String> joinColPair : joinColPairs){
+            OrderByElement orderByElement = new OrderByElement();
+            String leftCol = joinColPair.get(index);
+            orderByElement.setExpression(getColumn(leftCol));
+            orderByElements.add(orderByElement);
+        }
+
+        return orderByElements;
+    }
+
+    private Column getColumn(String column) {
+        String[] tableAndCol = column.split("//.");
+        Column col =  null;
+        if (tableAndCol.length > 1){
+            Table table = new Table();
+            table.setName(tableAndCol[0]);
+            String colName = tableAndCol[1];
+            col= new Column(table, colName);
+
+        } else {
+            String colName = tableAndCol[1];
+            col = new Column();
+            col.setColumnName(colName);
+        }
+        return col;
+    }
+
     private Map<String, PrimitiveValue> onePassHashJoinNext() {
+
         if (isFirstCall) {
             hashLeftTuples();
             advanceRight();
@@ -126,7 +170,7 @@ public class JoinOperator extends Eval implements Operator {
         }
         if (leftBucketItr != null && leftBucketItr.hasNext()) {
             List<PrimitiveValue> matchedLeftTupleSerialized = leftBucketItr.next();
-            Map<String, PrimitiveValue> matchedLeftTuple = Utils.deserialize(matchedLeftTupleSerialized,idxToColName);
+            Map<String, PrimitiveValue> matchedLeftTuple = Utils.convertToMap(matchedLeftTupleSerialized, idxToColName);
             return merge(matchedLeftTuple, rightChildTuple);
         } else {
             advanceRight();
@@ -137,17 +181,16 @@ public class JoinOperator extends Eval implements Operator {
     }
 
 
-
     private void hashLeftTuples() {
         leftBuckets = new HashMap<String, List<List<PrimitiveValue>>>();
         while (leftChildTuple != null) {
             String leftHash = getLeftHash();
             List<List<PrimitiveValue>> tempBucket = leftBuckets.get(leftHash);
             if (tempBucket != null)
-                tempBucket.add(Utils.serialize(leftChildTuple,colNameToIdx));
+                tempBucket.add(Utils.convertToList(leftChildTuple, colNameToIdx));
             else {
                 tempBucket = new ArrayList<List<PrimitiveValue>>();
-                tempBucket.add(Utils.serialize(leftChildTuple,colNameToIdx));
+                tempBucket.add(Utils.convertToList(leftChildTuple, colNameToIdx));
                 leftBuckets.put(leftHash, tempBucket);
             }
             leftChildTuple = leftChild.next();
