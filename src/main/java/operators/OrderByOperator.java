@@ -42,8 +42,17 @@ public class OrderByOperator implements Operator {
     }
 
     public OrderByOperator(List<OrderByElement> orderByElements, Operator operator, Map<String, PrimitiveValue> firstTuple) {
-        this(orderByElements, operator);
-        this.firstTuple = firstTuple;
+//        this(orderByElements, operator);
+//        this.firstTuple = firstTuple;
+
+        this.orderByElements = orderByElements;
+        this.child = operator;
+        this.childTuple = firstTuple;
+        colNameToIdx = new LinkedHashMap<String, Integer>();
+        idxToColName = new LinkedHashMap<Integer, String>();
+        Utils.fillColIdx(childTuple, colNameToIdx, idxToColName);
+        isFirstCall = true;
+        compareTuples = new CompareTuples();
     }
 
     public Map<String, PrimitiveValue> next() {
@@ -200,6 +209,15 @@ public class OrderByOperator implements Operator {
         }
 
         public int compareMaps(Map<String, PrimitiveValue> o1, Map<String, PrimitiveValue> o2) {
+
+//            if(o1 == null){
+//                return -1;
+//            }
+//            if (o2 == null){
+//                return 1;
+//            }
+
+
             for (OrderByElement element : orderByElements) {
                 Expression expression = element.getExpression();
                 boolean isAsc = element.isAsc();
