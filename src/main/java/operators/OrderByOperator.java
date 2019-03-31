@@ -93,7 +93,7 @@ public class OrderByOperator implements Operator {
         fileNameCounter = 0;
         directoryName = "sorted_files_" + UUID.randomUUID();
         new File(directoryName).mkdir();
-        maxInMemoryTuples = 10000;
+        maxInMemoryTuples = 5000;
         while (childTuple != null) {
             populateChildTuples();
             String fileName = getNewFileName();
