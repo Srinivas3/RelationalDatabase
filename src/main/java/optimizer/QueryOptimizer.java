@@ -5,7 +5,9 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.select.Join;
 import operators.*;
 
 import java.util.ArrayList;
@@ -70,15 +72,48 @@ public class QueryOptimizer extends Eval {
         List<Expression> rightChildExps =  getChildOnlyExps(joinChild.getRightChild(),selectAndExpressions);
         composeAndAddSelectOperator(joinChild,joinChild.getRightChild(),rightChildExps,"right");
         removeExpressions(selectAndExpressions,rightChildExps);
+        List<Expression> equalExpressions = getEqualExpressions(selectAndExpressions);
+        Operator newJoin = getNewJoin(equalExpressions,joinChild);
+        removeExpressions(selectAndExpressions,equalExpressions);
 
         if (selectAndExpressions.size() == 0){
-            return joinChild;
+            return newJoin;
         }
         else{
             Expression andExpression = constructByAnding(selectAndExpressions);
             selectParent.setWhereExp(andExpression);
+            selectParent.setChild(newJoin);
             return selectParent;
         }
+    }
+    private Operator getNewJoin(List<Expression> equalExpressions, JoinOperator joinChild){
+        if (equalExpressions.size() == 0){
+            return joinChild;
+        }
+        Expression additionalOnExpression = constructByAnding(equalExpressions);
+        Join join = joinChild.getJoin();
+        if (!join.isSimple()){
+            Expression childJoinOnExpression = join.getOnExpression();
+            Expression totalOnExpression = new AndExpression(additionalOnExpression,childJoinOnExpression);
+            return new JoinOperator(joinChild.getLeftChild(),joinChild.getRightChild(),join);
+        }
+        else{
+            if (join.isNatural()){
+                return joinChild;
+            }
+            join.setSimple(false);
+            join.setOnExpression(additionalOnExpression);
+            return new JoinOperator(joinChild.getLeftChild(),joinChild.getRightChild(),join);
+        }
+    }
+    private List<Expression> getEqualExpressions(List<Expression> selectAndExpressions){
+        List<Expression> equalExpressions = new ArrayList<Expression>();
+        for(Expression expression : selectAndExpressions){
+            if (expression instanceof EqualsTo){
+                equalExpressions.add((EqualsTo)expression);
+            }
+        }
+        return equalExpressions;
     }
     private void removeExpressions(List<Expression> removeFrom,List<Expression> removable){
         for (Expression expression: removable){
@@ -127,7 +162,7 @@ public class QueryOptimizer extends Eval {
             eval(expression);
         }
         catch (Exception e){
-            e.printStackTrace();
+            //e.printStackTrace();
         }
     }
 

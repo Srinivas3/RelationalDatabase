@@ -64,18 +64,12 @@ public class JoinOperator extends Eval implements Operator {
 
 
     public JoinOperator(Operator leftChild, Operator rightChild, Join join) {
-
+        this.leftChild = leftChild;
         this.rightChild = rightChild;
         this.join = join;
-        if (join.isSimple()) {
-         cacheLeftChild(leftChild);
-         setBlockSize();
-        } else {
-            this.leftChild = leftChild;
-        }
+        setBlockSize();
         setSchema();
         isFirstCall = true;
-
         mergedTuple = new LinkedHashMap<String, PrimitiveValue>();
     }
 
@@ -167,10 +161,10 @@ public class JoinOperator extends Eval implements Operator {
             saveSchemaLeftChild();
             saveSchemaRightChild();
         }
-        if (leftChildTuple == null || rightChildTuple == null) {
-            return null;
-        }
         if (join.isSimple()) {
+            if (leftChildTuple == null || rightChildTuple == null) {
+                return null;
+            }
             return simpleJoinNext();
         } else if (join.isNatural()) {
             return naturalJoinNext();
@@ -183,6 +177,10 @@ public class JoinOperator extends Eval implements Operator {
 
     private Map<String, PrimitiveValue> simpleJoinNext() {
         return blockNestedLoopJoinNext();
+    }
+
+    public Join getJoin() {
+        return join;
     }
 
 
@@ -286,14 +284,19 @@ public class JoinOperator extends Eval implements Operator {
     private Map<String, PrimitiveValue> equiJoinNext() {
         if (isFirstCall) {
             joinColPairs = new ArrayList<List<String>>();
-//            rightChildTuple = rightChild.next();
             Expression onExpression = join.getOnExpression();
             parseExpressionAndUpdateColPairs(onExpression);
         }
-        if (Utils.inMemoryMode)
+        if (Utils.inMemoryMode){
             return onePassHashJoinNext();
-        else
+        }
+        else{
+            if (leftChildTuple == null || rightChildTuple == null) {
+                return null;
+            }
             return sortMergeJoinNext();
+        }
+
     }
 
     private void parseExpressionAndUpdateColPairs(Expression onExpression) {
@@ -326,10 +329,17 @@ public class JoinOperator extends Eval implements Operator {
             joinColPairs = new ArrayList<List<String>>();
             updateCommonCols();
         }
-        if (Utils.inMemoryMode)
+        if (Utils.inMemoryMode){
             return onePassHashJoinNext();
-        else
+        }
+
+        else{
+            if (leftChildTuple == null || rightChildTuple == null) {
+                return null;
+            }
             return sortMergeJoinNext();
+        }
+
 
 
     }
@@ -381,7 +391,6 @@ public class JoinOperator extends Eval implements Operator {
         if (isFirstCall) {
             leftOrderByElements = createOrderByElements(0);
             rightOrderByElements = createOrderByElements(1);
-//            System.out.println(leftChildTuple);
             orderedLeftChild = new OrderByOperator(leftOrderByElements, leftChild, leftChildTuple);
             orderedRightChild = new OrderByOperator(rightOrderByElements, rightChild, rightChildTuple);
             isFirstCall = false;
