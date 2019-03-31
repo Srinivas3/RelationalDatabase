@@ -90,7 +90,7 @@ public class OrderByOperator implements Operator {
         if (!isFirstCall)
             return Utils.convertToMap(getNextValueAndUpdateQueue(), idxToColName);
         isFirstCall = false;
-        fileNameCounter = new Random().nextInt(Integer.MAX_VALUE - 5000);
+        fileNameCounter = 0;
         directoryName = "sorted_files";
         new File(directoryName).mkdir();
         maxInMemoryTuples = 10000;
