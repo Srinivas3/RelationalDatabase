@@ -137,7 +137,7 @@ public class JoinOperator extends Eval implements Operator {
         if (Utils.inMemoryMode) {
             this.blockSize = 10;
         } else {
-            this.blockSize = 5000;
+            this.blockSize = 1000;
         }
     }
 
