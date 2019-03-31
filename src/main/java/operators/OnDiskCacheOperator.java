@@ -4,7 +4,6 @@ import net.sf.jsqlparser.expression.PrimitiveValue;
 import schema.Utils;
 
 import java.io.*;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,25 +16,45 @@ public class OnDiskCacheOperator implements Operator {
     Map<String, Integer> colNameToIdx;
     Map<Integer, String> idxToColName;
     Map<String,PrimitiveValue> returnTuple;
+    Map<String,Integer> schema;
     String cacheFileName;
     boolean isCached;
+    boolean isFirstCall;
     boolean isFirstTime;
+
     ObjectOutputStream objectOutputStream;
     ObjectInputStream objectInputStream;
     public OnDiskCacheOperator(Operator child) {
         colNameToIdx = new LinkedHashMap<String, Integer>();
         idxToColName = new LinkedHashMap<Integer, String>();
         this.child = child;
-        this.childTuple = child.next();
+        this.schema = child.getSchema();
         this.returnTuple = new LinkedHashMap<String,PrimitiveValue>();
         cacheFileName = "cache" + Utils.diskCacheCnt;
         Utils.diskCacheCnt++;
-        Utils.fillColIdx(childTuple, colNameToIdx, idxToColName);
         isCached = false;
+        isFirstCall = true;
         isFirstTime = true;
     }
-    @Override
+
+    public Map<String, Integer> getSchema() {
+        return schema;
+    }
+
+    public Operator getChild() {
+        return child;
+    }
+
+    public void setChild(Operator child) {
+        this.child = child;
+    }
+
     public Map<String, PrimitiveValue> next() {
+        if (isFirstCall){
+            this.childTuple = child.next();
+            Utils.fillColIdx(childTuple,colNameToIdx,idxToColName);
+            isFirstCall = false;
+        }
         try{
             if (childTuple == null) {
                 if (objectInputStream != null){
@@ -74,7 +93,6 @@ public class OnDiskCacheOperator implements Operator {
         return  returnTuple;
     }
 
-    @Override
     public void init() {
         isCached = true;
         try{

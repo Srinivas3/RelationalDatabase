@@ -17,44 +17,18 @@ public class ProjectionOperator extends Eval implements Operator{
     List<SelectItem> selectItems;
     Operator child;
     Map<String,PrimitiveValue> childTuple;
-    String defaultAlias;
     boolean isAggregate = false;
     boolean isFirstCall = true;
+    private int colCounter;
+    private Map<String, Integer> schema;
+    int no_alias_cnt;
 
-    public PrimitiveValue eval(Function function) throws SQLException {
-        String fn = function.getName().toUpperCase();
-        if ("DATE".equals(fn)) {
-            List args = function.getParameters().getExpressions();
-            if (args.size() != 1) {
-                throw new SQLException("DATE() takes exactly one argument");
-            } else {
-                return new DateValue(this.eval((Expression)args.get(0)).toRawString());
-            }
-        } else if ("SUM".equalsIgnoreCase(fn) || "MIN".equalsIgnoreCase(fn) || "MAX".equalsIgnoreCase(fn) || "AVG".equalsIgnoreCase(fn)){
-            Expression expression = function.getParameters().getExpressions().get(0);
-            PrimitiveValue value = eval(expression);
-            return value;
-
-        } else if ("COUNT".equalsIgnoreCase(fn)){
-
-            if(function.isAllColumns()!=true){
-                Expression expression = function.getParameters().getExpressions().get(0);
-                PrimitiveValue value = eval(expression);
-                return value;
-            }else {
-                return new LongValue(1);
-            }
-
-        } else {
-            return this.missing("Function:" + fn);
-        }
-    }
 
     public ProjectionOperator(List<SelectItem> selectItems, Operator child){
 
         this.child = child;
         this.selectItems = selectItems;
-
+        setSchema();
         //TODO recursively check select expression for expression of type Function(EX:SUM(A) + AVG(B))
         for (SelectItem selectItem : selectItems){
             if (selectItem instanceof SelectExpressionItem){
@@ -71,7 +45,6 @@ public class ProjectionOperator extends Eval implements Operator{
 
         String colName = x.getColumnName();
         String tableName = x.getTable().getName();
-        this.defaultAlias = x.toString();
         return Utils.getColValue(tableName, colName, childTuple);
     }
     public Map<String, PrimitiveValue> next(){
@@ -88,6 +61,54 @@ public class ProjectionOperator extends Eval implements Operator{
         }
     }
 
+    public Map<String, Integer> getSchema() {
+        return schema;
+    }
+    private String getAlias(SelectExpressionItem selectExpressionItem){
+        String alias = selectExpressionItem.getAlias();
+        if(alias==null){
+            Expression expression = selectExpressionItem.getExpression();
+            if(expression instanceof Column){
+                alias = expression.toString();
+            }else{
+                alias = expression.toString()+"_"+no_alias_cnt;
+                no_alias_cnt++;
+            }
+        }
+        return alias;
+
+    }
+
+    private void setSchema(){
+        schema = new LinkedHashMap<String, Integer>();
+        Map<String,Integer> childSchema = this.child.getSchema();
+        Set<String> colNames = childSchema.keySet();
+        no_alias_cnt = 0;
+        for(SelectItem selectItem : selectItems){
+            if(selectItem instanceof SelectExpressionItem){
+                SelectExpressionItem selectExpressionItem = (SelectExpressionItem) selectItem;
+                String alias = getAlias(selectExpressionItem);
+                schema.put(alias,colCounter);
+                colCounter++;
+            } else if(selectItem instanceof AllColumns){
+                schema = childSchema;
+                return;
+            } else if(selectItem instanceof AllTableColumns){
+                String tableName = selectItem.toString().split("\\.")[0];
+                allColsFromChild(tableName,colNames);
+            }
+        }
+    }
+
+    private void allColsFromChild(String table,Set<String> colNames){
+        for(String colName : colNames){
+            if(Utils.isSameTable(table,colName)){
+                schema.put(colName,colCounter);
+                colCounter++;
+            }
+        }
+    }
+
     private Map<String, PrimitiveValue> aggregateNext(){
         childTuple = child.next();
         if (childTuple == null)
@@ -95,14 +116,10 @@ public class ProjectionOperator extends Eval implements Operator{
 
         Map<String, Aggregator> aggregators= new LinkedHashMap<String, Aggregator>();
         Map<String,Function> aggFunctions = new LinkedHashMap<String,Function>();
-        int count = 0;
+        no_alias_cnt = 0;
         for (SelectItem selectItem: selectItems){
             SelectExpressionItem selectExpressionItem = (SelectExpressionItem)selectItem;
-            String alias = selectExpressionItem.getAlias();
-            if (alias == null){
-                alias = selectExpressionItem.toString() + "_" + Integer.toString(count);
-                count++;
-            }
+            String alias = getAlias(selectExpressionItem);
             Function functionExp = (Function)selectExpressionItem.getExpression();
             Aggregator aggregator = AggregateFactory.getAggregator(functionExp.getName());
             aggFunctions.put(alias,functionExp);
@@ -135,16 +152,15 @@ public class ProjectionOperator extends Eval implements Operator{
             return null;
         }
         Map<String,PrimitiveValue> tuple = new LinkedHashMap<String,PrimitiveValue>();
+        no_alias_cnt = 0;
         for(SelectItem selectItem : selectItems){
             if (selectItem instanceof SelectExpressionItem){
                 SelectExpressionItem selectExpressionItem = (SelectExpressionItem) selectItem;
-                String alias = selectExpressionItem.getAlias();
+                String alias = getAlias(selectExpressionItem);
                 Expression expression = selectExpressionItem.getExpression();
                 PrimitiveValue primVal = null;
                 try {
                     primVal = eval(expression);
-                    if (alias == null)
-                        alias = this.defaultAlias;
                 }
                 catch (Exception e){
                     e.printStackTrace();
@@ -163,9 +179,15 @@ public class ProjectionOperator extends Eval implements Operator{
         return tuple;
     }
 
+    public Operator getChild() {
+        return child;
+    }
+
     public void init(){
         child.init();
     }
+
+
     private void insertAllCols(Map<String,PrimitiveValue> tuple,AllTableColumns allTableColumns){
         String tableName = allTableColumns.getTable().getName();
         for (String key : childTuple.keySet()){
@@ -176,4 +198,33 @@ public class ProjectionOperator extends Eval implements Operator{
 
 
     }
+    public PrimitiveValue eval(Function function) throws SQLException {
+        String fn = function.getName().toUpperCase();
+        if ("DATE".equals(fn)) {
+            List args = function.getParameters().getExpressions();
+            if (args.size() != 1) {
+                throw new SQLException("DATE() takes exactly one argument");
+            } else {
+                return new DateValue(this.eval((Expression)args.get(0)).toRawString());
+            }
+        } else if ("SUM".equalsIgnoreCase(fn) || "MIN".equalsIgnoreCase(fn) || "MAX".equalsIgnoreCase(fn) || "AVG".equalsIgnoreCase(fn)){
+            Expression expression = function.getParameters().getExpressions().get(0);
+            PrimitiveValue value = eval(expression);
+            return value;
+
+        } else if ("COUNT".equalsIgnoreCase(fn)){
+
+            if(function.isAllColumns()!=true){
+                Expression expression = function.getParameters().getExpressions().get(0);
+                PrimitiveValue value = eval(expression);
+                return value;
+            }else {
+                return new LongValue(1);
+            }
+
+        } else {
+            return this.missing("Function:" + fn);
+        }
+    }
+
 }

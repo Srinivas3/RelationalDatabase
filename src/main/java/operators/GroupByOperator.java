@@ -68,6 +68,9 @@ public class GroupByOperator extends Eval implements Operator {
         }
 
     }
+    public Map<String,Integer> getSchema(){
+        return schema;
+    }
 
     public PrimitiveValue eval(Column x) {
         String colName = x.getColumnName();

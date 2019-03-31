@@ -14,17 +14,40 @@ public class InMemoryCacheOperator implements Operator {
     boolean isCached;
     Map<String,PrimitiveValue> returnTuple;
     Iterator<List<PrimitiveValue>> cacheIterator;
+    private Map<String,Integer> schema;
+    boolean isFirstCall;
     public InMemoryCacheOperator(Operator child){
         colNameToIdx = new LinkedHashMap<String,Integer>();
         idxToColName = new LinkedHashMap<Integer,String>();
         returnTuple = new LinkedHashMap<String, PrimitiveValue>();
         cacheMemory = new ArrayList<List<PrimitiveValue>>();
         this.child = child;
-        this.childTuple = child.next();
-        Utils.fillColIdx(childTuple,colNameToIdx,idxToColName);
+        setSchema();
         isCached = false;
+        isFirstCall = true;
     }
+
+    private void setSchema(){
+        schema = child.getSchema();
+    }
+    public Map<String, Integer> getSchema() {
+        return schema;
+    }
+
+    public Operator getChild() {
+        return child;
+    }
+
+    public void setChild(Operator child) {
+        this.child = child;
+    }
+
     public Map<String, PrimitiveValue> next() {
+        if (isFirstCall){
+            this.childTuple = child.next();
+            Utils.fillColIdx(childTuple,colNameToIdx,idxToColName);
+            isFirstCall = false;
+        }
         if (childTuple == null){
             isCached = true;
             return null;

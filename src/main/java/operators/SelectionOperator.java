@@ -10,24 +10,35 @@ import schema.Utils;
 import java.util.Map;
 
 public class SelectionOperator extends Eval implements Operator {
-    Expression expression;
-    Operator child;
+    private Expression whereExp;
+    private Operator child;
     Map<String,PrimitiveValue> childTuple;
     public PrimitiveValue eval(Column x) {
         String colName = x.getColumnName();
         String tableName = x.getTable().getName();
         return Utils.getColValue(tableName, colName, childTuple);
     }
-    public SelectionOperator(Expression expression,Operator child){
+    public SelectionOperator(Expression whereExp,Operator child){
         this.child = child;
-        this.expression = expression;
+        this.whereExp = whereExp;
+    }
+    public Expression getWhereExp(){
+        return whereExp;
+    }
+
+    public void setChild(Operator child) {
+        this.child = child;
+    }
+
+    public void setWhereExp(Expression whereExp) {
+        this.whereExp = whereExp;
     }
 
     public Map<String, PrimitiveValue> next(){
         while ( (childTuple = child.next())!= null) {
             BooleanValue whereCond = null;
             try {
-                whereCond = (BooleanValue) eval(this.expression);
+                whereCond = (BooleanValue) eval(this.whereExp);
             }
             catch (Exception e){
                 e.printStackTrace();
@@ -40,7 +51,16 @@ public class SelectionOperator extends Eval implements Operator {
         }
         return null;
     }
-    public void init(){
 
+    public void init(){
+        child.init();
+    }
+
+    public Map<String, Integer> getSchema() {
+        return child.getSchema();
+    }
+
+    public Operator getChild() {
+        return child;
     }
 }

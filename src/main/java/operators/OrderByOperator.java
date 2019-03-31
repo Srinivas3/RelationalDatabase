@@ -29,10 +29,12 @@ public class OrderByOperator implements Operator {
     String directoryName;
     PriorityQueue<PriorityQueueTuple> diskSortPriorityQueue;
     CompareTuples compareTuples;
+    private Map<String,Integer> schema;
 
     public OrderByOperator(List<OrderByElement> orderByElements, Operator operator) {
         this.orderByElements = orderByElements;
         this.child = operator;
+        setSchema();
         this.childTuple = child.next();
         colNameToIdx = new LinkedHashMap<String, Integer>();
         idxToColName = new LinkedHashMap<Integer, String>();
@@ -44,12 +46,20 @@ public class OrderByOperator implements Operator {
     public OrderByOperator(List<OrderByElement> orderByElements, Operator operator, Map<String, PrimitiveValue> firstTuple) {
         this.orderByElements = orderByElements;
         this.child = operator;
+        setSchema();
         this.childTuple = firstTuple;
         colNameToIdx = new LinkedHashMap<String, Integer>();
         idxToColName = new LinkedHashMap<Integer, String>();
         Utils.fillColIdx(childTuple, colNameToIdx, idxToColName);
         isFirstCall = true;
         compareTuples = new CompareTuples();
+    }
+
+    private void setSchema() {
+        this.schema = child.getSchema();
+    }
+    public Map<String, Integer> getSchema() {
+        return schema;
     }
 
     public Map<String, PrimitiveValue> next() {
@@ -179,6 +189,8 @@ public class OrderByOperator implements Operator {
     public void init() {
 
     }
+
+
 
     private void populateChildTuples() {
         long counter = 0;

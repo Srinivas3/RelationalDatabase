@@ -14,6 +14,13 @@ public class Utils{
     public static Map<String, List<ColumnDefinition>> nameToColDefs = new HashMap<String, List<ColumnDefinition>>();
     public static boolean inMemoryMode = true;
     public static int diskCacheCnt = 0;
+    public static boolean isSameTable(String table, String col){
+        String [] partsCol = col.split("\\.");
+        if(partsCol.length==2){
+            return table.equalsIgnoreCase(partsCol[0]);
+        }
+        return false;
+    }
     public static boolean areColsEqual(String col1,String col2){
         String[] partsCol1 = col1.split("\\.");
         String[] partsCol2 = col2.split("\\.");

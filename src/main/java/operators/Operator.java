@@ -7,4 +7,7 @@ import java.util.Map;
 public interface Operator {
     public Map<String, PrimitiveValue>  next();
     public void init();
+    public Map<String,Integer> getSchema();
+
+
 }

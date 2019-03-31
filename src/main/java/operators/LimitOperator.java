@@ -10,11 +10,16 @@ public class LimitOperator implements Operator {
     long offset = 0;
     Operator child;
     Map<String,PrimitiveValue> childTuple;
-
-    public LimitOperator(Limit limit, Operator operator) {
+    Map<String,Integer> schema;
+    public LimitOperator(Limit limit, Operator child) {
         rowCount = limit.getRowCount();
         offset = limit.getOffset();
-        child = operator;
+        this.child = child;
+        this.schema = child.getSchema();
+    }
+
+    public Map<String, Integer> getSchema() {
+        return schema;
     }
 
     public Map<String, PrimitiveValue> next() {

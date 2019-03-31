@@ -5,11 +5,16 @@ import operators.*;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
+import optimizer.QueryOptimizer;
 
 import java.util.List;
 
 
 public class TreeBuilder {
+    QueryOptimizer queryOptimizer;
+    public TreeBuilder(){
+        queryOptimizer = new QueryOptimizer();
+    }
 
     public Operator buildTree(PlainSelect plainSelect){
         FromItem fromItem = plainSelect.getFromItem();
@@ -23,9 +28,10 @@ public class TreeBuilder {
         }
 
         Expression expression = plainSelect.getWhere();
-        if (expression != null)
+        if (expression != null) {
             operator = new SelectionOperator(expression, operator);
-
+            operator = queryOptimizer.getOptimizedOperator(operator);
+        }
         List<Column> groupByColumns = plainSelect.getGroupByColumnReferences();
         List<SelectItem> selectItems = plainSelect.getSelectItems();
         if(groupByColumns!=null && groupByColumns.size()!=0){
@@ -71,6 +77,7 @@ public class TreeBuilder {
         else if (fromItem instanceof SubSelect){
             SubSelect subselect = (SubSelect) fromItem;
             return handleSelectBody(subselect.getSelectBody());
+
         }
         else if (fromItem instanceof SubJoin){
             SubJoin subJoin = (SubJoin)fromItem;
@@ -85,6 +92,7 @@ public class TreeBuilder {
 
     public Operator handleSelectBody(SelectBody selectBody){
         if (selectBody instanceof PlainSelect){
+
             return buildTree((PlainSelect)selectBody);
         }
         else if (selectBody instanceof Union){

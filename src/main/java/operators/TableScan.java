@@ -18,13 +18,28 @@ public class TableScan implements Operator{
     List<ColumnDefinition> colDefs;
     Map<String, PrimitiveValue> tuple;
     String tableName;
+    Map<String,Integer> schema;
     public TableScan(Table table){
         this.table = table;
         this.filePath = "data/"+ table.getName() + format;
         this.colDefs = Utils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();
         setTableName();
+        setSchema();
         init();
+    }
+    private void setSchema(){
+        schema = new LinkedHashMap<String, Integer>();
+        int colCounter = 0;
+        for (ColumnDefinition colDef: colDefs) {
+            String colName = colDef.getColumnName();
+            String tableColName = this.tableName + "." + colName;
+            schema.put(tableColName,colCounter);
+            colCounter++;
+        }
+    }
+    public Map<String,Integer> getSchema(){
+        return schema;
     }
     private void setTableName(){
         String alias = table.getAlias();
@@ -34,6 +49,11 @@ public class TableScan implements Operator{
             this.tableName = table.getName();
 
     }
+
+    public String getTableName() {
+        return tableName;
+    }
+
     public Map<String,PrimitiveValue> next(){
         String line = null;
         try{
@@ -42,7 +62,7 @@ public class TableScan implements Operator{
         catch (IOException e){
             e.printStackTrace();
         }
-        if (line == null){
+        if (line == null || line == ""){
             return null;
         }
 
@@ -61,6 +81,9 @@ public class TableScan implements Operator{
     }
     public void init(){
         try {
+            if (br != null){
+                br.close();
+            }
             br = new BufferedReader(new FileReader(new File(filePath)));
         }
         catch(IOException e){

@@ -17,4 +17,8 @@ public class UnionOperator implements Operator {
     public void init(){
 
     }
+
+    public Map<String, Integer> getSchema() {
+        return null;
+    }
 }

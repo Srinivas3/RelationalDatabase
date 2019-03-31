@@ -60,6 +60,7 @@ public class JoinOperator extends Eval implements Operator {
     private Iterator<List<PrimitiveValue>> leftBlockIterator;
     private Iterator<List<PrimitiveValue>> rightBlockIterator;
     private Map<String, PrimitiveValue> mergedTuple;
+    private Map<String, Integer> schema;
 
 
     public JoinOperator(Operator leftChild, Operator rightChild, Join join) {
@@ -67,17 +68,61 @@ public class JoinOperator extends Eval implements Operator {
         this.rightChild = rightChild;
         this.join = join;
         if (join.isSimple()) {
-            cacheLeftChild(leftChild);
-            setBlockSize();
+         cacheLeftChild(leftChild);
+         setBlockSize();
         } else {
             this.leftChild = leftChild;
         }
-        leftChildTuple = this.leftChild.next();
-        rightChildTuple = this.rightChild.next();
+        setSchema();
         isFirstCall = true;
 
         mergedTuple = new LinkedHashMap<String, PrimitiveValue>();
     }
+
+    public Operator getLeftChild() {
+        return leftChild;
+    }
+
+    public Operator getRightChild() {
+        return rightChild;
+    }
+    public void setChild(String leftOrRight, Operator child){
+        if (leftOrRight.equals("left")){
+            this.leftChild = child;
+        }
+        else if (leftOrRight.equals("right")){
+            this.rightChild = child;
+        }
+        else{
+            System.out.println("Invalid Child");
+        }
+    }
+
+    private void setSchema(){
+        schema = new LinkedHashMap<String, Integer>();
+        Map<String,Integer> leftChildSchema = this.leftChild.getSchema();
+        Map<String,Integer> rightChildSchema = this.rightChild.getSchema();
+
+        Set<String> leftColNames = leftChildSchema.keySet();
+        Set<String> rightColNames = rightChildSchema.keySet();
+
+        int colCounter = 0;
+
+        for (String leftCol : leftColNames){
+            schema.put(leftCol,colCounter);
+            colCounter++;
+        }
+
+        for (String rightCol : rightColNames){
+            if(schema.get(rightCol)==null) {
+                schema.put(rightCol, colCounter);
+                colCounter++;
+            }
+        }
+
+
+    }
+
 
     private void cacheLeftChild(Operator leftChild) {
 
@@ -96,7 +141,7 @@ public class JoinOperator extends Eval implements Operator {
 
     private void setBlockSize() {
         if (Utils.inMemoryMode) {
-            this.blockSize = 1;
+            this.blockSize = 10;
         } else {
             this.blockSize = 5000;
         }
@@ -108,13 +153,22 @@ public class JoinOperator extends Eval implements Operator {
         return Utils.getColValue(tableName, colName, this.currTuple);
     }
 
+    public Map<String, Integer> getSchema() {
+        return schema;
+    }
+
     public Map<String, PrimitiveValue> next() {
-        if (leftChildTuple == null || rightChildTuple == null) {
-            return null;
-        }
         if (isFirstCall) {
+            leftChildTuple = this.leftChild.next();
+            rightChildTuple = this.rightChild.next();
+            if (leftChildTuple == null || rightChildTuple == null) {
+                return null;
+            }
             saveSchemaLeftChild();
             saveSchemaRightChild();
+        }
+        if (leftChildTuple == null || rightChildTuple == null) {
+            return null;
         }
         if (join.isSimple()) {
             return simpleJoinNext();
