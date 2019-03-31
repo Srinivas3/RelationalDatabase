@@ -67,13 +67,13 @@ public class Main {
                 i += 1;
             }
 
-            System.out.print(counter);
-            System.out.print(". ");
+          //  System.out.print(counter);
+         //   System.out.print(". ");
             System.out.println(sb.toString());
             counter++;
         }
         long time2 = System.currentTimeMillis();
-        System.out.println(time2-time1);
+       // System.out.println(time2-time1);
     }
 
 }

@@ -24,7 +24,6 @@ public class InMemoryCacheOperator implements Operator {
         Utils.fillColIdx(childTuple,colNameToIdx,idxToColName);
         isCached = false;
     }
-    @Override
     public Map<String, PrimitiveValue> next() {
         if (childTuple == null){
             isCached = true;
@@ -49,7 +48,6 @@ public class InMemoryCacheOperator implements Operator {
 
     }
 
-    @Override
     public void init() {
         cacheIterator = cacheMemory.iterator();
         childTuple = Utils.convertToMap(cacheIterator.next(),idxToColName);
