@@ -52,7 +52,7 @@ public class Main {
     }
 
     public static void displayOutput(Operator operator) {
-       // printOperatorTree(operator);
+        // printOperatorTree(operator);
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
@@ -67,7 +67,7 @@ public class Main {
                     sb.append("|");
                 i += 1;
             }
-         //   System.out.print(counter);
+            //System.out.print(counter);
            // System.out.print(". ");
             System.out.println(sb.toString());
             counter++;
