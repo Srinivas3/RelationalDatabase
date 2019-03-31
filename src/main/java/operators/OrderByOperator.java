@@ -91,7 +91,7 @@ public class OrderByOperator implements Operator {
             return Utils.convertToMap(getNextValueAndUpdateQueue(), idxToColName);
         isFirstCall = false;
         fileNameCounter = 0;
-        directoryName = "sorted_files";
+        directoryName = "sorted_files_" + UUID.randomUUID();
         new File(directoryName).mkdir();
         maxInMemoryTuples = 10000;
         while (childTuple != null) {
