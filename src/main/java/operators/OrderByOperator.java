@@ -42,9 +42,6 @@ public class OrderByOperator implements Operator {
     }
 
     public OrderByOperator(List<OrderByElement> orderByElements, Operator operator, Map<String, PrimitiveValue> firstTuple) {
-//        this(orderByElements, operator);
-//        this.firstTuple = firstTuple;
-
         this.orderByElements = orderByElements;
         this.child = operator;
         this.childTuple = firstTuple;
