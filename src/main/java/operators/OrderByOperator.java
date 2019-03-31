@@ -93,7 +93,7 @@ public class OrderByOperator implements Operator {
         fileNameCounter = 0;
         directoryName = "sorted_files_" + UUID.randomUUID();
         new File(directoryName).mkdir();
-        maxInMemoryTuples = 2000;
+        maxInMemoryTuples = 5000;
         while (childTuple != null) {
             populateChildTuples();
             String fileName = getNewFileName();
@@ -218,6 +218,11 @@ public class OrderByOperator implements Operator {
         }
 
         public int compareMaps(Map<String, PrimitiveValue> o1, Map<String, PrimitiveValue> o2) {
+
+//            if (o1 == null || o2 == null){
+//                System.out.println(o1);
+//                System.out.println(o2);
+//            }
 
 //            if(o1 == null){
 //                return -1;
