@@ -29,7 +29,7 @@ public class TreeBuilder {
         List<Column> groupByColumns = plainSelect.getGroupByColumnReferences();
         List<SelectItem> selectItems = plainSelect.getSelectItems();
         if(groupByColumns!=null && groupByColumns.size()!=0){
-            operator = new InMemGroupByOperator(groupByColumns, selectItems, operator);
+            operator = new GroupByOperator(groupByColumns, selectItems, operator);
         }
 
         List<OrderByElement> orderByElements = plainSelect.getOrderByElements();

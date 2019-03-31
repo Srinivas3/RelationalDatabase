@@ -93,7 +93,7 @@ public class ProjectionOperator extends Eval implements Operator{
         if (childTuple == null)
             return null;
 
-        Map<String, AggregatePattern> aggregators= new LinkedHashMap<String, AggregatePattern>();
+        Map<String, Aggregator> aggregators= new LinkedHashMap<String, Aggregator>();
         Map<String,Function> aggFunctions = new LinkedHashMap<String,Function>();
         int count = 0;
         for (SelectItem selectItem: selectItems){
@@ -104,7 +104,7 @@ public class ProjectionOperator extends Eval implements Operator{
                 count++;
             }
             Function functionExp = (Function)selectExpressionItem.getExpression();
-            AggregatePattern aggregator = getAggregatorPattern(functionExp.getName());
+            Aggregator aggregator = AggregateFactory.getAggregator(functionExp.getName());
             aggFunctions.put(alias,functionExp);
             aggregators.put(alias,aggregator);
         }
@@ -127,20 +127,6 @@ public class ProjectionOperator extends Eval implements Operator{
         }
         return outTuple;
 
-    }
-    private AggregatePattern getAggregatorPattern(String functionName) {
-        if (functionName.equalsIgnoreCase("SUM"))
-           return new SumAggregator();
-        else if(functionName.equalsIgnoreCase("COUNT"))
-            return new CountAggregator();
-        else if(functionName.equalsIgnoreCase("MIN"))
-            return new MinAggregator();
-        else if(functionName.equalsIgnoreCase("MAX"))
-            return new MaxAggregator();
-        else if(functionName.equalsIgnoreCase("AVG"))
-            return new AverageAggregator();
-        else
-            return null;
     }
 
     private Map<String, PrimitiveValue> volcanoNext() {

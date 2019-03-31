@@ -20,7 +20,7 @@ public class TableScan implements Operator{
     String tableName;
     public TableScan(Table table){
         this.table = table;
-        this.filePath = "data/"+ table.getName() + format;
+        this.filePath = "C:/data/"+ table.getName() + format;
         this.colDefs = Utils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();
         setTableName();

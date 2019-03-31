@@ -1,11 +1,9 @@
 package aggregators;
 
-import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.PrimitiveValue;
-import net.sf.jsqlparser.schema.PrimitiveType;
 
-public class CountAggregator implements AggregatePattern {
+public class CountAggregator implements Aggregator {
     PrimitiveValue accum;
 
     void CountAggregator(){

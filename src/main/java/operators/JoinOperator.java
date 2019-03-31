@@ -23,9 +23,9 @@ public class JoinOperator extends Eval implements Operator {
     Map<String, PrimitiveValue> leftChildTuple;
     Map<String, PrimitiveValue> rightChildTuple;
     Map<String, PrimitiveValue> currTuple;
-    Map<String, Integer> colNameToIdx;
+    Map<String, Integer> leftColNameToIdx;
     Map<String, Integer> rightColNameToIdx;
-    Map<Integer, String> idxToColName;
+    Map<Integer, String> leftIdxToColName;
     Map<Integer, String> rightIdxToColName;
     List<List<String>> joinColPairs;
     Map<String, List<List<PrimitiveValue>>> leftBuckets;
@@ -34,7 +34,8 @@ public class JoinOperator extends Eval implements Operator {
     List<List<PrimitiveValue>> leftMatchedTuples;
     String rightHash;
     List<List<PrimitiveValue>> leftBucket;
-
+    List<List<PrimitiveValue>> leftBlock;
+    List<List<PrimitiveValue>> rightBlock;
     Map<String, PrimitiveValue> previousLeftTuple = null;
     Map<String, PrimitiveValue> previousRightTuple = null;
     Map<String, PrimitiveValue> currentLeftTuple = null;
@@ -53,16 +54,52 @@ public class JoinOperator extends Eval implements Operator {
     private boolean listsNotExhausted = false;
     private boolean endOfChildrenReached = false;
     List<PrimitiveValue> currentRightElementInList = null;
-
+    int blockSize;
+    private boolean isLeftBlockExhausted;
+    private boolean isRightBlockExhausted;
+    private Iterator<List<PrimitiveValue>> leftBlockIterator;
+    private Iterator<List<PrimitiveValue>> rightBlockIterator;
+    private Map<String, PrimitiveValue> mergedTuple;
 
 
     public JoinOperator(Operator leftChild, Operator rightChild, Join join) {
-        this.leftChild = leftChild;
+
         this.rightChild = rightChild;
         this.join = join;
-        leftChildTuple = leftChild.next();
-        rightChildTuple = rightChild.next();
+        if (join.isSimple()) {
+            cacheLeftChild(leftChild);
+            setBlockSize();
+        } else {
+            this.leftChild = leftChild;
+        }
+        leftChildTuple = this.leftChild.next();
+        rightChildTuple = this.rightChild.next();
         isFirstCall = true;
+
+        mergedTuple = new LinkedHashMap<String, PrimitiveValue>();
+    }
+
+    private void cacheLeftChild(Operator leftChild) {
+
+        if (Utils.inMemoryMode) {
+            this.leftChild = new InMemoryCacheOperator(leftChild);
+        } else {
+            if (leftChild instanceof TableScan) {
+                this.leftChild = leftChild;
+            } else {
+                this.leftChild = new OnDiskCacheOperator(leftChild);
+            }
+
+        }
+
+    }
+
+    private void setBlockSize() {
+        if (Utils.inMemoryMode) {
+            this.blockSize = 1;
+        } else {
+            this.blockSize = 5000;
+        }
     }
 
     public PrimitiveValue eval(Column x) {
@@ -72,25 +109,120 @@ public class JoinOperator extends Eval implements Operator {
     }
 
     public Map<String, PrimitiveValue> next() {
-        if (join.isSimple())
-            return simpleJoinNext();
-        else {
-            if (isFirstCall) {
-                saveSchema();
-                saveSchemaRightChild();
-            }
-            if (join.isNatural())
-                return naturalJoinNext();
-            else
-                return equiJoinNext();
+        if (leftChildTuple == null || rightChildTuple == null) {
+            return null;
         }
+        if (isFirstCall) {
+            saveSchemaLeftChild();
+            saveSchemaRightChild();
+        }
+        if (join.isSimple()) {
+            return simpleJoinNext();
+        } else if (join.isNatural()) {
+            return naturalJoinNext();
+        } else {
+            return equiJoinNext();
+        }
+
+
     }
 
-    private void saveSchema() {
-        colNameToIdx = new LinkedHashMap<String, Integer>();
-        idxToColName = new LinkedHashMap<Integer, String>();
-        Utils.fillColIdx(leftChildTuple, colNameToIdx, idxToColName);
+    private Map<String, PrimitiveValue> simpleJoinNext() {
+        return blockNestedLoopJoinNext();
     }
+
+
+    private Map<String, PrimitiveValue> blockNestedLoopJoinNext() {
+        if (isFirstCall) {
+            leftBlock = new ArrayList<List<PrimitiveValue>>();
+            rightBlock = new ArrayList<List<PrimitiveValue>>();
+            isLeftBlockExhausted = false;
+            isRightBlockExhausted = false;
+            leftBlock.add(Utils.convertToList(leftChildTuple, leftColNameToIdx));
+            rightBlock.add(Utils.convertToList(rightChildTuple, rightColNameToIdx));
+            loadLeftBlock();
+            loadRightBlock();
+            isFirstCall = false;
+        }
+        if (!rightBlockIterator.hasNext() && !leftBlockIterator.hasNext()) {
+            isLeftBlockExhausted = true;
+            loadLeftBlock();
+            if (leftBlock.size() == 0) {
+                leftChild.init();
+                loadLeftBlock();
+                loadRightBlock();
+            }
+            if (rightBlock.size() == 0) {
+                leftBlock.clear();
+                rightBlock.clear();
+                return null;
+            }
+            initRightBlockIterator();
+
+        }
+        if (!leftBlockIterator.hasNext()) {
+            initLeftBlockIterator();
+            rightChildTuple = Utils.convertToMap(rightBlockIterator.next(), rightIdxToColName);
+        }
+
+        leftChildTuple = Utils.convertToMap(leftBlockIterator.next(), leftIdxToColName);
+        if (rightChildTuple == null) {
+            leftBlock.clear();
+            rightBlock.clear();
+            return null;
+        }
+        return merge(leftChildTuple, rightChildTuple);
+
+    }
+
+    private void initLeftBlockIterator() {
+        leftBlockIterator = leftBlock.iterator();
+        //leftChildTuple= Utils.convertToMap(leftBlockIterator.next(),leftIdxToColName);
+    }
+
+    private void initRightBlockIterator() {
+        if (rightBlock.size() != 0) {
+            rightBlockIterator = rightBlock.iterator();
+            rightChildTuple = Utils.convertToMap(rightBlockIterator.next(), rightIdxToColName);
+        }
+
+    }
+
+    private void loadLeftBlock() {
+        if (!isFirstCall) leftBlock.clear();
+        for (int i = 0; i < blockSize; i++) {
+            leftChildTuple = leftChild.next();
+            if (leftChildTuple == null) {
+                break;
+            }
+            leftBlock.add(Utils.convertToList(leftChildTuple, leftColNameToIdx));
+
+        }
+        initLeftBlockIterator();
+    }
+
+    private void loadRightBlock() {
+        if (!isFirstCall) {
+            rightBlock.clear();
+        }
+        for (int i = 0; i < blockSize; i++) {
+
+            rightChildTuple = rightChild.next();
+            if (rightChildTuple == null) {
+                break;
+            }
+            rightBlock.add(Utils.convertToList(rightChildTuple, rightColNameToIdx));
+        }
+        initRightBlockIterator();
+    }
+
+
+    private void saveSchemaLeftChild() {
+        leftColNameToIdx = new LinkedHashMap<String, Integer>();
+        leftIdxToColName = new LinkedHashMap<Integer, String>();
+        Utils.fillColIdx(leftChildTuple, leftColNameToIdx, leftIdxToColName);
+    }
+
     private void saveSchemaRightChild() {
         rightColNameToIdx = new LinkedHashMap<String, Integer>();
         rightIdxToColName = new LinkedHashMap<Integer, String>();
@@ -216,10 +348,10 @@ public class JoinOperator extends Eval implements Operator {
 
     }
 
-    private Map<String, PrimitiveValue>  getMergedTupleFromLists() {
+    private Map<String, PrimitiveValue> getMergedTupleFromLists() {
         List<PrimitiveValue> leftElement = null;
         List<PrimitiveValue> rightElement = null;
-        if(leftElementsListIterator == null){
+        if (leftElementsListIterator == null) {
             leftElementsListIterator = leftElementsList.iterator();
             rightElementsListIterator = rightElementsList.iterator();
             currentRightElementInList = rightElementsListIterator.next();
@@ -227,7 +359,7 @@ public class JoinOperator extends Eval implements Operator {
         Map<String, PrimitiveValue> valToBeReturned = null;
 
 
-        if(!leftElementsListIterator.hasNext()){
+        if (!leftElementsListIterator.hasNext()) {
             leftElementsListIterator = leftElementsList.iterator();
             currentRightElementInList = rightElementsListIterator.next();
         }
@@ -235,12 +367,12 @@ public class JoinOperator extends Eval implements Operator {
         leftElement = leftElementsListIterator.next();
         rightElement = currentRightElementInList;
 
-        Map<String, PrimitiveValue> currentLeftTupleInList = Utils.convertToMap(leftElement, idxToColName);
+        Map<String, PrimitiveValue> currentLeftTupleInList = Utils.convertToMap(leftElement, leftIdxToColName);
         Map<String, PrimitiveValue> currentRightTupleInList = Utils.convertToMap(rightElement, rightIdxToColName);
 
         valToBeReturned = merge(currentLeftTupleInList, currentRightTupleInList);
 
-        if(!rightElementsListIterator.hasNext() && !leftElementsListIterator.hasNext()){
+        if (!rightElementsListIterator.hasNext() && !leftElementsListIterator.hasNext()) {
             listsNotExhausted = false;
             leftElementsList.clear();
             rightElementsList.clear();
@@ -265,7 +397,7 @@ public class JoinOperator extends Eval implements Operator {
         }
         advanceChildren();
         fillLists();
-        listsNotExhausted  = true;
+        listsNotExhausted = true;
 
     }
 
@@ -273,21 +405,21 @@ public class JoinOperator extends Eval implements Operator {
         previousLeftTuple = currentLeftTuple;
         previousRightTuple = currentRightTuple;
 
-        while (orderedLeftChild.compareTuples.compareMaps(previousLeftTuple, currentLeftTuple) == 0){
-            leftElementsList.add(Utils.convertToList(currentLeftTuple, colNameToIdx));
+        while (orderedLeftChild.compareTuples.compareMaps(previousLeftTuple, currentLeftTuple) == 0) {
+            leftElementsList.add(Utils.convertToList(currentLeftTuple, leftColNameToIdx));
             previousLeftTuple = currentLeftTuple;
             currentLeftTuple = orderedLeftChild.next();
-            if (currentLeftTuple == null){
+            if (currentLeftTuple == null) {
                 endOfChildrenReached = true;
                 break;
             }
         }
 
-        while (orderedRightChild.compareTuples.compareMaps(previousRightTuple, currentRightTuple) == 0){
+        while (orderedRightChild.compareTuples.compareMaps(previousRightTuple, currentRightTuple) == 0) {
             rightElementsList.add(Utils.convertToList(currentRightTuple, rightColNameToIdx));
             previousRightTuple = currentRightTuple;
             currentRightTuple = orderedRightChild.next();
-            if (currentRightTuple == null){
+            if (currentRightTuple == null) {
                 endOfChildrenReached = true;
                 break;
             }
@@ -344,7 +476,7 @@ public class JoinOperator extends Eval implements Operator {
         }
         if (leftBucketItr != null && leftBucketItr.hasNext()) {
             List<PrimitiveValue> matchedLeftTupleSerialized = leftBucketItr.next();
-            Map<String, PrimitiveValue> matchedLeftTuple = Utils.convertToMap(matchedLeftTupleSerialized, idxToColName);
+            Map<String, PrimitiveValue> matchedLeftTuple = Utils.convertToMap(matchedLeftTupleSerialized, leftIdxToColName);
             return merge(matchedLeftTuple, rightChildTuple);
         } else {
             advanceRight();
@@ -360,10 +492,10 @@ public class JoinOperator extends Eval implements Operator {
             String leftHash = getLeftHash();
             List<List<PrimitiveValue>> tempBucket = leftBuckets.get(leftHash);
             if (tempBucket != null)
-                tempBucket.add(Utils.convertToList(leftChildTuple, colNameToIdx));
+                tempBucket.add(Utils.convertToList(leftChildTuple, leftColNameToIdx));
             else {
                 tempBucket = new ArrayList<List<PrimitiveValue>>();
-                tempBucket.add(Utils.convertToList(leftChildTuple, colNameToIdx));
+                tempBucket.add(Utils.convertToList(leftChildTuple, leftColNameToIdx));
                 leftBuckets.put(leftHash, tempBucket);
             }
             leftChildTuple = leftChild.next();
@@ -412,24 +544,28 @@ public class JoinOperator extends Eval implements Operator {
 
 
     private void updateCommonCols() {
+
         Set<String> leftCols = leftChildTuple.keySet();
         Set<String> rightCols = rightChildTuple.keySet();
         for (String leftCol : leftCols) {
-            if (rightCols.contains(leftCol)) {
-                List<String> commonColPair = new ArrayList<String>();
-                commonColPair.add(leftCol);
-                commonColPair.add(leftCol);
-                joinColPairs.add(commonColPair);
+            for (String rightCol : rightCols) {
+                if (Utils.areColsEqual(leftCol, rightCol)) {
+                    List<String> colPair = new ArrayList<String>();
+                    colPair.add(leftCol);
+                    colPair.add(rightCol);
+                    joinColPairs.add(colPair);
+                }
             }
         }
 
     }
 
+
     public void init() {
 
     }
 
-    private Map<String, PrimitiveValue> simpleJoinNext() {
+    private Map<String, PrimitiveValue> nestedLoopJoin() {
         if (leftChildTuple == null)
             return null;
         rightChildTuple = rightChild.next();
@@ -448,7 +584,7 @@ public class JoinOperator extends Eval implements Operator {
     }
 
     private Map<String, PrimitiveValue> merge(Map<String, PrimitiveValue> leftTuple, Map<String, PrimitiveValue> rightTuple) {
-        Map<String, PrimitiveValue> mergedTuple = new LinkedHashMap<String, PrimitiveValue>();
+        mergedTuple.clear();
         for (String key : leftTuple.keySet())
             mergedTuple.put(key, leftTuple.get(key));
         for (String key : rightTuple.keySet())

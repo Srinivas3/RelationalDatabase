@@ -55,6 +55,7 @@ public class Main {
     public static void displayOutput(Operator operator){
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
+        long time1 = System.currentTimeMillis();
         while((tuple = operator.next())!= null ){
             StringBuilder sb = new StringBuilder();
             Set<String> keySet = tuple.keySet();
@@ -65,11 +66,14 @@ public class Main {
                     sb.append("|");
                 i += 1;
             }
-            //System.out.print(counter);
-            //System.out.print(". ");
+
+            System.out.print(counter);
+            System.out.print(". ");
             System.out.println(sb.toString());
             counter++;
         }
+        long time2 = System.currentTimeMillis();
+        System.out.println(time2-time1);
     }
 
 }

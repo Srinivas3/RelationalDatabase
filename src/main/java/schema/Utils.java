@@ -1,17 +1,31 @@
 package schema;
 
 
-import net.sf.jsqlparser.expression.PrimitiveValue;
+import net.sf.jsqlparser.eval.Eval;
+import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 
+import java.sql.SQLException;
 import java.util.*;
 
 import java.util.HashMap;
 
-public class Utils {
+public class Utils{
     public static Map<String, List<ColumnDefinition>> nameToColDefs = new HashMap<String, List<ColumnDefinition>>();
     public static boolean inMemoryMode = true;
+    public static int diskCacheCnt = 0;
+    public static boolean areColsEqual(String col1,String col2){
+        String[] partsCol1 = col1.split("\\.");
+        String[] partsCol2 = col2.split("\\.");
+        if (partsCol1.length == 2){
+            col1 = partsCol1[1];
+        }
+        if (partsCol2.length == 2){
+            col2 = partsCol2[1];
+        }
+        return col1.equals(col2);
 
+    }
     public static PrimitiveValue getColValue(String tableName, String colName, Map<String, PrimitiveValue> tuple) {
         PrimitiveValue primVal = tuple.get(colName);
         if (primVal != null)

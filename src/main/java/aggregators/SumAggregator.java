@@ -6,7 +6,7 @@ import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.schema.PrimitiveType;
 
 
-public class SumAggregator implements AggregatePattern {
+public class SumAggregator implements Aggregator {
     PrimitiveValue accum;
 
     void SumAggregator(){

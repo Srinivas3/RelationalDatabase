@@ -5,7 +5,7 @@ import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.schema.PrimitiveType;
 
-public class MaxAggregator implements AggregatePattern{
+public class MaxAggregator implements Aggregator {
 
     PrimitiveValue accum;
 
