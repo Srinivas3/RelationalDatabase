@@ -96,7 +96,7 @@ public class OrderByOperator implements Operator {
             primValTuple = (List<PrimitiveValue>) sortedFileOis.readObject();
         } catch (EOFException e) {
             closeInputStream(sortedFileOis);
-            System.out.println("Inside EOF exception in on disk sort return null");
+//            System.out.println("Inside EOF exception in on disk sort return null");
             return null;
         } catch (Exception e) {
             e.printStackTrace();
