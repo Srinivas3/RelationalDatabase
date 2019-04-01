@@ -13,6 +13,7 @@ import java.sql.SQLException;
 import java.util.*;
 
 public class OrderByOperator implements Operator {
+    static int mergefilecount = 0;
     Operator child;
     List<OrderByElement> orderByElements;
     int counter = -1;
@@ -93,7 +94,8 @@ public class OrderByOperator implements Operator {
     private Map<String, PrimitiveValue> readNextTupleFromSortedFile() {
         List<PrimitiveValue> primValTuple = null;
         try {
-            primValTuple = (List<PrimitiveValue>) sortedFileOis.readObject();
+//            primValTuple = (List<PrimitiveValue>) sortedFileOis.readObject();
+            primValTuple = (List<PrimitiveValue>) sortedFileOis.readUnshared();
         } catch (EOFException e) {
             closeInputStream(sortedFileOis);
 //            System.out.println("Inside EOF exception in on disk sort return null");
@@ -120,7 +122,9 @@ public class OrderByOperator implements Operator {
             String fileName = getNewFileName();
             sortAndWriteToFile(fileName);
         }
+        child = null;
         serializedChildTuples = null;
+//        System.gc();
         initPriorityQueue();
         mergeAllFiles();
         sortedFileOis = openObjectInputStream(finalSortedFileName);
@@ -128,11 +132,14 @@ public class OrderByOperator implements Operator {
     }
 
     private void mergeAllFiles() {
+        mergefilecount++;
         try {
             List<PrimitiveValue> nextTuplePrimVal = getNextValueAndUpdateQueue();
             ObjectOutputStream sortedFileOos = openObjectOutputStream(finalSortedFileName);
             while (nextTuplePrimVal != null) {
-                sortedFileOos.writeObject(nextTuplePrimVal);
+
+                sortedFileOos.writeUnshared(nextTuplePrimVal);
+                sortedFileOos.reset();
                 nextTuplePrimVal = getNextValueAndUpdateQueue();
             }
             sortedFileOos.flush();
@@ -176,7 +183,7 @@ public class OrderByOperator implements Operator {
         File file = new File(fileName);
         fos = new FileOutputStream(file);
         BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fos);
-        return new ObjectOutputStream(fos);
+        return new ObjectOutputStream(bufferedOutputStream);
     }
 
     public void initPriorityQueue() {
@@ -195,8 +202,8 @@ public class OrderByOperator implements Operator {
         ObjectInputStream ois = null;
         try {
             FileInputStream fis = new FileInputStream(fileName);
-//            BufferedInputStream bis = new BufferedInputStream(fis);
-            ois = new ObjectInputStream(fis);
+            BufferedInputStream bis = new BufferedInputStream(fis);
+            ois = new ObjectInputStream(bis);
 
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -209,7 +216,8 @@ public class OrderByOperator implements Operator {
     private void insertInPriorityQueue(ObjectInputStream ois) {
         List<PrimitiveValue> tuple = null;
         try {
-            tuple = (List<PrimitiveValue>) ois.readObject();
+//            tuple = (List<PrimitiveValue>) ois.readObject();
+            tuple = (List<PrimitiveValue>) ois.readUnshared();
         } catch (EOFException e) {
             closeInputStream(ois);
             return;

@@ -135,9 +135,9 @@ public class JoinOperator extends Eval implements Operator {
 
     private void setBlockSize() {
         if (Utils.inMemoryMode) {
-            this.blockSize = 10;
+            this.blockSize = 10; //TODO change this to a bigger number if you are not adding cache below in memeory join
         } else {
-            this.blockSize = 1000;
+            this.blockSize = 100;
         }
     }
 
