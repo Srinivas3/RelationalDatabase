@@ -137,7 +137,7 @@ public class JoinOperator extends Eval implements Operator {
         if (Utils.inMemoryMode) {
             this.blockSize = 10;
         } else {
-            this.blockSize = 5000;
+            this.blockSize = 1000;
         }
     }
 
@@ -345,6 +345,7 @@ public class JoinOperator extends Eval implements Operator {
     }
 
     private int compareMaps(Map<String, PrimitiveValue> o1, Map<String, PrimitiveValue> o2) {
+
         for (List<String> a : joinColPairs) {
 
             PrimitiveValue value1 = o1.get(a.get(0));
@@ -417,7 +418,11 @@ public class JoinOperator extends Eval implements Operator {
         if (leftElementsListIterator == null) {
             leftElementsListIterator = leftElementsList.iterator();
             rightElementsListIterator = rightElementsList.iterator();
-            currentRightElementInList = rightElementsListIterator.next();
+            if (rightElementsListIterator.hasNext()){
+                currentRightElementInList = rightElementsListIterator.next();
+            } else {
+                return null;
+            }
         }
         Map<String, PrimitiveValue> valToBeReturned = null;
 
@@ -468,6 +473,15 @@ public class JoinOperator extends Eval implements Operator {
         previousLeftTuple = currentLeftTuple;
         previousRightTuple = currentRightTuple;
 
+//        System.out.println("currentLeftTuple in fill lists is " + currentLeftTuple);
+//        System.out.println("currentRightTuple in fill lists is " + currentRightTuple);
+        if (currentRightTuple == null || currentLeftTuple == null) {
+            endOfChildrenReached = true;
+            leftElementsList.clear();
+            rightElementsList.clear();
+            return;
+        }
+
         while (orderedLeftChild.compareTuples.compareMaps(previousLeftTuple, currentLeftTuple) == 0) {
             leftElementsList.add(Utils.convertToList(currentLeftTuple, leftColNameToIdx));
             previousLeftTuple = currentLeftTuple;
@@ -491,7 +505,9 @@ public class JoinOperator extends Eval implements Operator {
 
     private void advanceChildren() {
         while (true) {
-            if (compareMaps(currentLeftTuple, currentRightTuple) < 0) {
+            if (currentLeftTuple == null || currentRightTuple == null){
+                break;
+            } if (compareMaps(currentLeftTuple, currentRightTuple) < 0) {
                 currentLeftTuple = orderedLeftChild.next();
             } else if (compareMaps(currentLeftTuple, currentRightTuple) > 0) {
                 currentRightTuple = orderedRightChild.next();
