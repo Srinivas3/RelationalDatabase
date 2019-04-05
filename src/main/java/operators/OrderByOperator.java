@@ -33,6 +33,7 @@ public class OrderByOperator implements Operator {
     CompareTuples compareTuples;
     private Map<String, Integer> schema;
     private ObjectInputStream sortedFileOis;
+//    private int insertInPriorityQueueCallCounter = 0;
 
     public OrderByOperator(List<OrderByElement> orderByElements, Operator operator) {
         this.orderByElements = orderByElements;
@@ -166,7 +167,7 @@ public class OrderByOperator implements Operator {
         try {
             ObjectOutputStream oos = openObjectOutputStream(fileName);
             for (List<PrimitiveValue> serializedChildTuple : serializedChildTuples) {
-                oos.writeObject(serializedChildTuple);
+                oos.writeUnshared(serializedChildTuple);
             }
             oos.flush();
             oos.close();
@@ -214,10 +215,15 @@ public class OrderByOperator implements Operator {
     }
 
     private void insertInPriorityQueue(ObjectInputStream ois) {
+//        insertInPriorityQueueCallCounter = 0;
         List<PrimitiveValue> tuple = null;
         try {
 //            tuple = (List<PrimitiveValue>) ois.readObject();
             tuple = (List<PrimitiveValue>) ois.readUnshared();
+//            if (insertInPriorityQueueCallCounter % 1000 == 0){
+//                int x = 0;
+//            }
+//            insertInPriorityQueueCallCounter++;
         } catch (EOFException e) {
             closeInputStream(ois);
             return;
