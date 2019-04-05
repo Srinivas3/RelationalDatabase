@@ -3,45 +3,50 @@ package operators;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
-import schema.Utils;
+import utils.Utils;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.io.*;
 
-public class TableScan implements Operator{
-    static final String format=".csv";
+public class TableScan implements Operator {
+    static final String format = ".csv";
     Table table;
     String filePath;
     BufferedReader br;
     List<ColumnDefinition> colDefs;
     Map<String, PrimitiveValue> tuple;
     String tableName;
-    Map<String,Integer> schema;
-    public TableScan(Table table){
+    Map<String, Integer> schema;
+
+    public TableScan(Table table) {
         this.table = table;
-        this.filePath = "data/"+ table.getName() + format;
+//        this.filePath = "/Users/srinivasrishindra/Desktop/CourseWork/Spring_2019/Database_Systems/team15/data/"+ table.getName() + format;
+        this.filePath = "data/" + table.getName() + format;
         this.colDefs = Utils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();
         setTableName();
         setSchema();
         init();
     }
-    private void setSchema(){
+
+    private void setSchema() {
         schema = new LinkedHashMap<String, Integer>();
         int colCounter = 0;
-        for (ColumnDefinition colDef: colDefs) {
+        for (ColumnDefinition colDef : colDefs) {
             String colName = colDef.getColumnName();
             String tableColName = this.tableName + "." + colName;
-            schema.put(tableColName,colCounter);
+            schema.put(tableColName, colCounter);
             colCounter++;
         }
     }
-    public Map<String,Integer> getSchema(){
+
+    public Map<String, Integer> getSchema() {
         return schema;
     }
-    private void setTableName(){
+
+    private void setTableName() {
         String alias = table.getAlias();
         if (alias != null)
             this.tableName = alias;
@@ -54,43 +59,43 @@ public class TableScan implements Operator{
         return tableName;
     }
 
-    public Map<String,PrimitiveValue> next(){
+    public Map<String, PrimitiveValue> next() {
         String line = null;
-        try{
+        try {
             line = br.readLine();
-        }
-        catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
-        if (line == null || line == ""){
+        if (line == null || line == "") {
             return null;
         }
 
         String[] colValues = line.split("\\|");
         int i = 0;
-        for (ColumnDefinition colDef: colDefs) {
+        for (ColumnDefinition colDef : colDefs) {
             String colName = colDef.getColumnName();
             String colVal = colValues[i];
             String dataType = colDef.getColDataType().getDataType().toLowerCase();
-            PrimitiveValue primVal = getPrimitiveValue(dataType,colVal);
+            PrimitiveValue primVal = getPrimitiveValue(dataType, colVal);
             String tableColName = this.tableName + "." + colName;
-            tuple.put(tableColName,primVal);
+            tuple.put(tableColName, primVal);
             i++;
         }
         return tuple;
     }
-    public void init(){
+
+    public void init() {
         try {
-            if (br != null){
+            if (br != null) {
                 br.close();
             }
             br = new BufferedReader(new FileReader(new File(filePath)));
-        }
-        catch(IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
-    private PrimitiveValue getPrimitiveValue(String dataType, String value){
+
+    private PrimitiveValue getPrimitiveValue(String dataType, String value) {
         if (dataType.equals("string") || dataType.equals("char") || dataType.equals("varchar"))
             return new StringValue(value);
         else if (dataType.equals("int"))

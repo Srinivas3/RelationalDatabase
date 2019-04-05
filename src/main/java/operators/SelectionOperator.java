@@ -5,24 +5,27 @@ import net.sf.jsqlparser.expression.BooleanValue;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.schema.Column;
-import schema.Utils;
+import utils.Utils;
 
 import java.util.Map;
 
 public class SelectionOperator extends Eval implements Operator {
     private Expression whereExp;
     private Operator child;
-    Map<String,PrimitiveValue> childTuple;
+    Map<String, PrimitiveValue> childTuple;
+
     public PrimitiveValue eval(Column x) {
         String colName = x.getColumnName();
         String tableName = x.getTable().getName();
         return Utils.getColValue(tableName, colName, childTuple);
     }
-    public SelectionOperator(Expression whereExp,Operator child){
+
+    public SelectionOperator(Expression whereExp, Operator child) {
         this.child = child;
         this.whereExp = whereExp;
     }
-    public Expression getWhereExp(){
+
+    public Expression getWhereExp() {
         return whereExp;
     }
 
@@ -34,16 +37,15 @@ public class SelectionOperator extends Eval implements Operator {
         this.whereExp = whereExp;
     }
 
-    public Map<String, PrimitiveValue> next(){
-        while ( (childTuple = child.next())!= null) {
+    public Map<String, PrimitiveValue> next() {
+        while ((childTuple = child.next()) != null) {
             BooleanValue whereCond = null;
             try {
                 whereCond = (BooleanValue) eval(this.whereExp);
-            }
-            catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
-            if (whereCond.toBool()){
+            if (whereCond.toBool()) {
                 return childTuple;
             }
 
@@ -52,7 +54,7 @@ public class SelectionOperator extends Eval implements Operator {
         return null;
     }
 
-    public void init(){
+    public void init() {
         child.init();
     }
 

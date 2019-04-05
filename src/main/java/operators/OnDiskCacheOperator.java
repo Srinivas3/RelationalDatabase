@@ -1,7 +1,7 @@
 package operators;
 
 import net.sf.jsqlparser.expression.PrimitiveValue;
-import schema.Utils;
+import utils.Utils;
 
 import java.io.*;
 import java.util.LinkedHashMap;
@@ -15,8 +15,8 @@ public class OnDiskCacheOperator implements Operator {
     Map<String, PrimitiveValue> childTuple;
     Map<String, Integer> colNameToIdx;
     Map<Integer, String> idxToColName;
-    Map<String,PrimitiveValue> returnTuple;
-    Map<String,Integer> schema;
+    Map<String, PrimitiveValue> returnTuple;
+    Map<String, Integer> schema;
     String cacheFileName;
     boolean isCached;
     boolean isFirstCall;
@@ -24,12 +24,13 @@ public class OnDiskCacheOperator implements Operator {
 
     ObjectOutputStream objectOutputStream;
     ObjectInputStream objectInputStream;
+
     public OnDiskCacheOperator(Operator child) {
         colNameToIdx = new LinkedHashMap<String, Integer>();
         idxToColName = new LinkedHashMap<Integer, String>();
         this.child = child;
         this.schema = child.getSchema();
-        this.returnTuple = new LinkedHashMap<String,PrimitiveValue>();
+        this.returnTuple = new LinkedHashMap<String, PrimitiveValue>();
         cacheFileName = "cache" + Utils.diskCacheCnt;
         Utils.diskCacheCnt++;
         isCached = false;
@@ -50,25 +51,25 @@ public class OnDiskCacheOperator implements Operator {
     }
 
     public Map<String, PrimitiveValue> next() {
-        if (isFirstCall){
+        if (isFirstCall) {
             this.childTuple = child.next();
-            Utils.fillColIdx(childTuple,colNameToIdx,idxToColName);
+            Utils.fillColIdx(childTuple, colNameToIdx, idxToColName);
             isFirstCall = false;
         }
-        try{
+        try {
             if (childTuple == null) {
-                if (objectInputStream != null){
+                if (objectInputStream != null) {
                     objectInputStream.close();
                 }
-                if (objectOutputStream != null){
+                if (objectOutputStream != null) {
                     objectOutputStream.close();
                 }
-                    return null;
+                return null;
             }
-            if (isCached){
+            if (isCached) {
                 returnTuple.putAll(childTuple);
-                childTuple = Utils.convertToMap((List<PrimitiveValue>)objectInputStream.readObject(),idxToColName);
-                return  returnTuple;
+                childTuple = Utils.convertToMap((List<PrimitiveValue>) objectInputStream.readObject(), idxToColName);
+                return returnTuple;
             }
             if (isFirstTime) {
                 FileOutputStream fos = new FileOutputStream(cacheFileName);
@@ -81,27 +82,25 @@ public class OnDiskCacheOperator implements Operator {
             childTuple = child.next();
             return returnTuple;
 
-        }
-        catch (EOFException e){
+        } catch (EOFException e) {
             childTuple = null;
             return returnTuple;
-        }
-        catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return  returnTuple;
+        return returnTuple;
     }
 
     public void init() {
         isCached = true;
-        try{
+        try {
             FileInputStream fis = new FileInputStream(cacheFileName);
             BufferedInputStream bis = new BufferedInputStream(fis);
             objectInputStream = new ObjectInputStream(bis);
-            childTuple = Utils.convertToMap((List<PrimitiveValue>)objectInputStream.readObject(),idxToColName);;
-        }
-        catch (Exception e){
+            childTuple = Utils.convertToMap((List<PrimitiveValue>) objectInputStream.readObject(), idxToColName);
+            ;
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }

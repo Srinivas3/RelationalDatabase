@@ -7,7 +7,7 @@ import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
-import schema.Utils;
+import utils.Utils;
 
 import java.sql.SQLException;
 import java.util.*;
@@ -26,8 +26,8 @@ public class GroupByOperator extends Eval implements Operator {
     Map<String, PrimitiveValue> childTuple;
     Map<String, TupleAggWrapper> hashToTuppleAgg;
     Iterator<TupleAggWrapper> tupleAggWrapperIterator;
-    Map<String,PrimitiveValue> prevTuple;
-    Map<String,PrimitiveValue> currTuple;
+    Map<String, PrimitiveValue> prevTuple;
+    Map<String, PrimitiveValue> currTuple;
     List<OrderByElement> orderByElements;
     private OrderByOperator orderedChild;
     private TupleAggWrapper tupleAggWrapperForSort;
@@ -68,7 +68,8 @@ public class GroupByOperator extends Eval implements Operator {
         }
 
     }
-    public Map<String,Integer> getSchema(){
+
+    public Map<String, Integer> getSchema() {
         return schema;
     }
 
@@ -87,24 +88,24 @@ public class GroupByOperator extends Eval implements Operator {
     }
 
     private Map<String, PrimitiveValue> sortGroupByNext() {
-        if (isFirstCall){
+        if (isFirstCall) {
             orderByElements = getOrderByElements();
             orderedChild = new OrderByOperator(orderByElements, child);
-            tupleAggWrapperForSort = new TupleAggWrapper(selectItems,schema,aggCnt);
+            tupleAggWrapperForSort = new TupleAggWrapper(selectItems, schema, aggCnt);
             isFirstCall = false;
             currTuple = orderedChild.next();
             prevTuple = currTuple;
         }
-        if (currTuple == null){
+        if (currTuple == null) {
             return null;
         }
-        while (orderedChild.compareTuples.compareMaps(currTuple,prevTuple) == 0){
+        while (orderedChild.compareTuples.compareMaps(currTuple, prevTuple) == 0) {
             prevTuple = currTuple;
             currTuple = orderedChild.next();
-            if (prevTuple != null){
+            if (prevTuple != null) {
                 tupleAggWrapperForSort.update(prevTuple);
             }
-            if (currTuple == null){
+            if (currTuple == null) {
                 break;
             }
         }
@@ -164,8 +165,6 @@ public class GroupByOperator extends Eval implements Operator {
         }
         return joiner.toString();
     }
-
-
 
 
     public void init() {

@@ -1,38 +1,39 @@
-package schema;
+package utils;
 
 
-import net.sf.jsqlparser.eval.Eval;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 
-import java.sql.SQLException;
 import java.util.*;
 
 import java.util.HashMap;
 
-public class Utils{
+public class Utils {
     public static Map<String, List<ColumnDefinition>> nameToColDefs = new HashMap<String, List<ColumnDefinition>>();
     public static boolean inMemoryMode = true;
     public static int diskCacheCnt = 0;
-    public static boolean isSameTable(String table, String col){
-        String [] partsCol = col.split("\\.");
-        if(partsCol.length==2){
+
+    public static boolean isSameTable(String table, String col) {
+        String[] partsCol = col.split("\\.");
+        if (partsCol.length == 2) {
             return table.equalsIgnoreCase(partsCol[0]);
         }
         return false;
     }
-    public static boolean areColsEqual(String col1,String col2){
+
+    public static boolean areColsEqual(String col1, String col2) {
         String[] partsCol1 = col1.split("\\.");
         String[] partsCol2 = col2.split("\\.");
-        if (partsCol1.length == 2){
+        if (partsCol1.length == 2) {
             col1 = partsCol1[1];
         }
-        if (partsCol2.length == 2){
+        if (partsCol2.length == 2) {
             col2 = partsCol2[1];
         }
         return col1.equals(col2);
 
     }
+
     public static PrimitiveValue getColValue(String tableName, String colName, Map<String, PrimitiveValue> tuple) {
         PrimitiveValue primVal = tuple.get(colName);
         if (primVal != null)
@@ -75,18 +76,17 @@ public class Utils{
 
     }
 
-    public static void fillColIdx(Map<String,PrimitiveValue> childTuple,Map<String,Integer> colNameToIdx,Map<Integer,String> idxToColName){
+    public static void fillColIdx(Map<String, PrimitiveValue> childTuple, Map<String, Integer> colNameToIdx, Map<Integer, String> idxToColName) {
         if (childTuple == null)
             return;
         Set<String> colNames = childTuple.keySet();
         int i = 0;
-        for(String colName: colNames){
-            colNameToIdx.put(colName,i);
-            idxToColName.put(i,colName);
+        for (String colName : colNames) {
+            colNameToIdx.put(colName, i);
+            idxToColName.put(i, colName);
             i++;
         }
     }
-
 
 
 }

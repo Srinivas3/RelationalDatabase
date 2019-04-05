@@ -10,7 +10,7 @@ import net.sf.jsqlparser.schema.PrimitiveType;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.OrderByElement;
-import schema.Utils;
+import utils.Utils;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -80,35 +80,34 @@ public class JoinOperator extends Eval implements Operator {
     public Operator getRightChild() {
         return rightChild;
     }
-    public void setChild(String leftOrRight, Operator child){
-        if (leftOrRight.equals("left")){
+
+    public void setChild(String leftOrRight, Operator child) {
+        if (leftOrRight.equals("left")) {
             this.leftChild = child;
-        }
-        else if (leftOrRight.equals("right")){
+        } else if (leftOrRight.equals("right")) {
             this.rightChild = child;
-        }
-        else{
+        } else {
             System.out.println("Invalid Child");
         }
     }
 
-    private void setSchema(){
+    private void setSchema() {
         schema = new LinkedHashMap<String, Integer>();
-        Map<String,Integer> leftChildSchema = this.leftChild.getSchema();
-        Map<String,Integer> rightChildSchema = this.rightChild.getSchema();
+        Map<String, Integer> leftChildSchema = this.leftChild.getSchema();
+        Map<String, Integer> rightChildSchema = this.rightChild.getSchema();
 
         Set<String> leftColNames = leftChildSchema.keySet();
         Set<String> rightColNames = rightChildSchema.keySet();
 
         int colCounter = 0;
 
-        for (String leftCol : leftColNames){
-            schema.put(leftCol,colCounter);
+        for (String leftCol : leftColNames) {
+            schema.put(leftCol, colCounter);
             colCounter++;
         }
 
-        for (String rightCol : rightColNames){
-            if(schema.get(rightCol)==null) {
+        for (String rightCol : rightColNames) {
+            if (schema.get(rightCol) == null) {
                 schema.put(rightCol, colCounter);
                 colCounter++;
             }
@@ -137,7 +136,7 @@ public class JoinOperator extends Eval implements Operator {
         if (Utils.inMemoryMode) {
             this.blockSize = 10; //TODO change this to a bigger number if you are not adding cache below in memeory join
         } else {
-            this.blockSize = 100;
+            this.blockSize = 1000;
         }
     }
 
@@ -287,10 +286,9 @@ public class JoinOperator extends Eval implements Operator {
             Expression onExpression = join.getOnExpression();
             parseExpressionAndUpdateColPairs(onExpression);
         }
-        if (Utils.inMemoryMode){
+        if (Utils.inMemoryMode) {
             return onePassHashJoinNext();
-        }
-        else{
+        } else {
             if (leftChildTuple == null || rightChildTuple == null) {
                 return null;
             }
@@ -329,17 +327,14 @@ public class JoinOperator extends Eval implements Operator {
             joinColPairs = new ArrayList<List<String>>();
             updateCommonCols();
         }
-        if (Utils.inMemoryMode){
+        if (Utils.inMemoryMode) {
             return onePassHashJoinNext();
-        }
-
-        else{
+        } else {
             if (leftChildTuple == null || rightChildTuple == null) {
                 return null;
             }
             return sortMergeJoinNext();
         }
-
 
 
     }
@@ -418,7 +413,7 @@ public class JoinOperator extends Eval implements Operator {
         if (leftElementsListIterator == null) {
             leftElementsListIterator = leftElementsList.iterator();
             rightElementsListIterator = rightElementsList.iterator();
-            if (rightElementsListIterator.hasNext()){
+            if (rightElementsListIterator.hasNext()) {
                 currentRightElementInList = rightElementsListIterator.next();
             } else {
                 return null;
@@ -505,9 +500,10 @@ public class JoinOperator extends Eval implements Operator {
 
     private void advanceChildren() {
         while (true) {
-            if (currentLeftTuple == null || currentRightTuple == null){
+            if (currentLeftTuple == null || currentRightTuple == null) {
                 break;
-            } if (compareMaps(currentLeftTuple, currentRightTuple) < 0) {
+            }
+            if (compareMaps(currentLeftTuple, currentRightTuple) < 0) {
                 currentLeftTuple = orderedLeftChild.next();
             } else if (compareMaps(currentLeftTuple, currentRightTuple) > 0) {
                 currentRightTuple = orderedRightChild.next();

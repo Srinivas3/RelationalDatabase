@@ -15,7 +15,7 @@ import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
-import schema.Utils;
+import utils.Utils;
 
 public class Main {
 
@@ -62,7 +62,7 @@ public class Main {
             Set<String> keySet = tuple.keySet();
             int i = 0;
             for (String key : keySet) {
-                sb.append(tuple.get(key));
+                sb.append(tuple.get(key).toRawString());
                 if (i < keySet.size() - 1)
                     sb.append("|");
                 i += 1;
