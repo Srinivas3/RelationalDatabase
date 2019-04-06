@@ -21,11 +21,17 @@ public class Main {
 
     public static void main(String args[]) throws ParseException, FileNotFoundException {
 
-        if (args[0].equalsIgnoreCase("--in-mem")) {
-            Utils.inMemoryMode = true;
+
+        if (args.length > 0){
+            if (args[0].equalsIgnoreCase("--in-mem")) {
+                Utils.inMemoryMode = true;
+            } else {
+                Utils.inMemoryMode = false;
+            }
         } else {
-            Utils.inMemoryMode = false;
+            Utils.inMemoryMode = true;
         }
+
         System.out.print("$>");
         CCJSqlParser parser = new CCJSqlParser(System.in);
         Statement statement;
