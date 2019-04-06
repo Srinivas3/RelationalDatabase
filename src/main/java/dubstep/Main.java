@@ -32,7 +32,7 @@ public class Main {
             Utils.inMemoryMode = true;
         }
 
-        System.out.print("$>");
+        System.out.println("$> ");
         CCJSqlParser parser = new CCJSqlParser(System.in);
         Statement statement;
         while ((statement = parser.Statement()) != null) {
@@ -47,7 +47,7 @@ public class Main {
             } else {
                 System.out.println("Invalid Query");
             }
-            System.out.print("$>");
+            System.out.println("$> ");
         }
     }
 
