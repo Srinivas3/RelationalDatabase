@@ -15,6 +15,7 @@ import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
+import operators.joins.JoinOperator;
 import utils.Utils;
 
 public class Main {
@@ -73,8 +74,8 @@ public class Main {
                     sb.append("|");
                 i += 1;
             }
-            //System.out.print(counter);
-           // System.out.print(". ");
+            System.out.print(counter);
+            System.out.print(". ");
             System.out.println(sb.toString());
             counter++;
         }

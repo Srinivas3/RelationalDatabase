@@ -20,6 +20,14 @@ public class Utils {
         }
         return false;
     }
+    public static Map<Integer,String> getIdxToCol(Map<String,Integer> colToIdx ){
+        Set<String> colSet = colToIdx.keySet();
+        Map<Integer,String> idxToCol = new HashMap<Integer, String>();
+        for(String col:colSet){
+            idxToCol.put(colToIdx.get(col),col);
+        }
+        return idxToCol;
+    }
 
     public static boolean areColsEqual(String col1, String col2) {
         String[] partsCol1 = col1.split("\\.");

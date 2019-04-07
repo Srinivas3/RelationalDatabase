@@ -5,6 +5,7 @@ import operators.*;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
+import operators.joins.JoinOperator;
 import optimizer.QueryOptimizer;
 
 import java.util.List;

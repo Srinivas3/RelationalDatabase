@@ -99,7 +99,7 @@ public class GroupByOperator extends Eval implements Operator {
         if (currTuple == null) {
             return null;
         }
-        while (orderedChild.compareTuples.compareMaps(currTuple, prevTuple) == 0) {
+        while (orderedChild.getCompareTuples().compareMaps(currTuple, prevTuple) == 0) {
             prevTuple = currTuple;
             currTuple = orderedChild.next();
             if (prevTuple != null) {

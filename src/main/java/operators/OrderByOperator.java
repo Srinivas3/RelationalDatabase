@@ -31,7 +31,16 @@ public class OrderByOperator implements Operator {
     String directoryName;
     String finalSortedFileName;
     PriorityQueue<PriorityQueueTuple> diskSortPriorityQueue;
-    CompareTuples compareTuples;
+
+    public CompareTuples getCompareTuples() {
+        return compareTuples;
+    }
+
+    public void setCompareTuples(CompareTuples compareTuples) {
+        this.compareTuples = compareTuples;
+    }
+
+    private CompareTuples compareTuples;
     private Map<String, Integer> schema;
     private BufferedReader sortedFileBufferedReader;
     private TupleSerializer tupleSerializer;
@@ -282,7 +291,7 @@ public class OrderByOperator implements Operator {
     }
 
 
-    class CompareTuples extends Eval implements Comparator<List<PrimitiveValue>> {
+   public class CompareTuples extends Eval implements Comparator<List<PrimitiveValue>> {
 
         Map<String, PrimitiveValue> currTuple;
 
