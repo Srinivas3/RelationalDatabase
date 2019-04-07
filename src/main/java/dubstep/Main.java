@@ -74,8 +74,8 @@ public class Main {
                     sb.append("|");
                 i += 1;
             }
-            System.out.print(counter);
-            System.out.print(". ");
+           // System.out.print(counter);
+           //System.out.print(". ");
             System.out.println(sb.toString());
             counter++;
         }
