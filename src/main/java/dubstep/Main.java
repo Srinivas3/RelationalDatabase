@@ -1,6 +1,7 @@
 package dubstep;
 
 import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -19,10 +20,12 @@ import operators.joins.JoinOperator;
 import utils.Utils;
 
 public class Main {
-
+    private static boolean is_testMode = false;
     public static void main(String args[]) throws ParseException, FileNotFoundException {
-
-
+        if (is_testMode){
+            FileInputStream fis = new FileInputStream(new File("test_queries.txt"));
+            System.setIn(fis);
+        }
         if (args.length > 0){
             if (args[0].equalsIgnoreCase("--in-mem")) {
                 Utils.inMemoryMode = true;
@@ -32,14 +35,17 @@ public class Main {
         } else {
             Utils.inMemoryMode = true;
         }
-
+        List<Long> execution_times = new ArrayList<Long>();
         System.out.println("$> ");
         CCJSqlParser parser = new CCJSqlParser(System.in);
         Statement statement;
         while ((statement = parser.Statement()) != null) {
             if (statement instanceof Select) {
+                long startTime = System.currentTimeMillis();
                 Operator root = handleSelect((Select) statement);
                 displayOutput(root);
+                long endTime = System.currentTimeMillis();
+                execution_times.add(endTime-startTime);
             } else if (statement instanceof CreateTable) {
                 CreateTable createTable = (CreateTable) statement;
                 String tableName = createTable.getTable().getName();
@@ -50,6 +56,14 @@ public class Main {
             }
             System.out.println("$> ");
         }
+        if (is_testMode){
+            System.out.println("The execution times are");
+            for (Long execution_time:execution_times){
+                System.out.print(execution_time/1000);
+                System.out.print(" ");
+            }
+        }
+
     }
 
     public static Operator handleSelect(Select select) {
