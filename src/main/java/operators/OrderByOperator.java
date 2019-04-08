@@ -122,7 +122,7 @@ public class OrderByOperator implements Operator {
 
     private Map<String, PrimitiveValue> onDiskSortNext() {
         if (!isFirstCall) {
-            return readNextTupleFromSortedFile();
+            return Utils.convertToMap(getNextValueAndUpdateQueue(), idxToColName);
         }
         isFirstCall = false;
         fileNameCounter = 0;
@@ -141,9 +141,9 @@ public class OrderByOperator implements Operator {
         serializedChildTuples = null;
 //        System.gc();
         initPriorityQueue();
-        mergeAllFiles();
-        sortedFileBufferedReader = openBufferedInput(finalSortedFileName);
-        return readNextTupleFromSortedFile();
+        //mergeAllFiles();
+        //sortedFileBufferedReader = openBufferedInput(finalSortedFileName);
+        return Utils.convertToMap(getNextValueAndUpdateQueue(), idxToColName);
     }
 
     private void mergeAllFiles() {
@@ -207,8 +207,8 @@ public class OrderByOperator implements Operator {
         diskSortPriorityQueue = new PriorityQueue<PriorityQueueTuple>();
         while (i <= fileNameCounter) {
             String fileName = getFileName(i);
-            BufferedReader ois = openBufferedInput(fileName);
-            insertInPriorityQueue(ois);
+            BufferedReader bis = openBufferedInput(fileName);
+            insertInPriorityQueue(bis);
             i++;
         }
 
@@ -227,18 +227,18 @@ public class OrderByOperator implements Operator {
         return bufferedReader;
     }
 
-    private void insertInPriorityQueue(BufferedReader ois) {
+    private void insertInPriorityQueue(BufferedReader bis) {
         List<PrimitiveValue> tuple = null;
         try {
-            String oisString = ois.readLine();
+            String oisString = bis.readLine();
             if (oisString == null) {
-                closeInputStream(ois);
+                closeInputStream(bis);
                 return;
             }
             tuple = tupleSerializer.deserialize(oisString);
 
         } catch (EOFException e) {
-            closeInputStream(ois);
+            closeInputStream(bis);
             return;
         } catch (IOException e) {
             e.printStackTrace();
@@ -246,7 +246,7 @@ public class OrderByOperator implements Operator {
             e.printStackTrace();
         }
 
-        PriorityQueueTuple priorityQueueTuple = new PriorityQueueTuple(tuple, ois);
+        PriorityQueueTuple priorityQueueTuple = new PriorityQueueTuple(tuple, bis);
         diskSortPriorityQueue.add(priorityQueueTuple);
     }
 
@@ -264,8 +264,8 @@ public class OrderByOperator implements Operator {
         if (priorityQueueTuple == null)
             return null;
         List<PrimitiveValue> tuple = priorityQueueTuple.getTuple();
-        BufferedReader tupleOis = priorityQueueTuple.getTupleBufferedReader();
-        insertInPriorityQueue(tupleOis);
+        BufferedReader tupleBis = priorityQueueTuple.getTupleBufferedReader();
+        insertInPriorityQueue(tupleBis);
         return tuple;
     }
 

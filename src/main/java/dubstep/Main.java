@@ -21,58 +21,65 @@ import utils.Utils;
 
 public class Main {
     private static boolean is_testMode = false;
-    public static void main(String args[]) throws ParseException, FileNotFoundException {
-        if (is_testMode){
-            FileInputStream fis = new FileInputStream(new File("test_queries.txt"));
-            System.setIn(fis);
-        }
-        if (args.length > 0){
-            if (args[0].equalsIgnoreCase("--in-mem")) {
-                Utils.inMemoryMode = true;
-            } else {
-                Utils.inMemoryMode = false;
-            }
-        } else {
-            Utils.inMemoryMode = true;
-        }
-        List<Long> execution_times = new ArrayList<Long>();
-        System.out.println("$> ");
-        CCJSqlParser parser = new CCJSqlParser(System.in);
-        Statement statement;
-        while ((statement = parser.Statement()) != null) {
-            if (statement instanceof Select) {
-                long startTime = System.currentTimeMillis();
-                Operator root = handleSelect((Select) statement);
-                displayOutput(root);
-                long endTime = System.currentTimeMillis();
-                execution_times.add(endTime-startTime);
-            } else if (statement instanceof CreateTable) {
-                CreateTable createTable = (CreateTable) statement;
-                String tableName = createTable.getTable().getName();
-                List<ColumnDefinition> colDefs = createTable.getColumnDefinitions();
-                Utils.nameToColDefs.put(tableName, colDefs);
-            } else {
-                System.out.println("Invalid Query");
-            }
-            System.out.println("$> ");
-        }
-        if (is_testMode){
-            System.out.println("The execution times are");
-            for (Long execution_time:execution_times){
-                System.out.print(execution_time/1000);
-                System.out.print(" ");
-            }
-        }
 
+    public static void main(String args[]) throws ParseException, FileNotFoundException {
+        try {
+            if (is_testMode) {
+                FileInputStream fis = new FileInputStream(new File("nba_queries.txt"));
+                System.setIn(fis);
+            }
+            if (args.length > 0) {
+                if (args[0].equalsIgnoreCase("--in-mem")) {
+                    Utils.inMemoryMode = true;
+                } else {
+                    Utils.inMemoryMode = false;
+                }
+            } else {
+                Utils.inMemoryMode = true;
+            }
+            List<Long> execution_times = new ArrayList<Long>();
+            System.out.println("$> ");
+            CCJSqlParser parser = new CCJSqlParser(System.in);
+            Statement statement;
+            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
+            while ((statement = parser.Statement()) != null) {
+                if (statement instanceof Select) {
+                    long startTime = System.currentTimeMillis();
+                    Operator root = handleSelect((Select) statement);
+                    displayOutput(root, bufferedWriter);
+                    long endTime = System.currentTimeMillis();
+                    execution_times.add(endTime - startTime);
+                } else if (statement instanceof CreateTable) {
+                    CreateTable createTable = (CreateTable) statement;
+                    String tableName = createTable.getTable().getName();
+                    List<ColumnDefinition> colDefs = createTable.getColumnDefinitions();
+                    Utils.nameToColDefs.put(tableName, colDefs);
+                } else {
+                    System.out.println("Invalid Query");
+                }
+                bufferedWriter.write("$>" + "\n");
+                bufferedWriter.flush();
+            }
+            if (is_testMode) {
+                bufferedWriter.write("The execution times are: ");
+                for (Long execution_time : execution_times) {
+                    bufferedWriter.write(String.valueOf(execution_time / 1000) + " ");
+                }
+                bufferedWriter.flush();
+            }
+            bufferedWriter.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static Operator handleSelect(Select select) {
         TreeBuilder treeBuilder = new TreeBuilder();
         SelectBody selectBody = select.getSelectBody();
-        return treeBuilder.handleSelectBody(selectBody);
+        return treeBuilder.handleSelectBody(selectBody, null);
     }
 
-    public static void displayOutput(Operator operator) {
+    public static void displayOutput(Operator operator, BufferedWriter bufferedWriter) throws Exception {
         // printOperatorTree(operator);
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
@@ -88,14 +95,19 @@ public class Main {
                     sb.append("|");
                 i += 1;
             }
-           // System.out.print(counter);
-           //System.out.print(". ");
-            System.out.println(sb.toString());
+            //System.out.print(counter);
+            //System.out.print(". ");
+            bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
-        //long time2 = System.currentTimeMillis();
-        //System.out.println(time2-time1);
+        bufferedWriter.flush();
+
     }
+
+
+    //long time2 = System.currentTimeMillis();
+    //System.out.println(time2-time1);
+
 
     public static void printSchema(Map<String, Integer> schema) {
         Set<String> colNames = schema.keySet();

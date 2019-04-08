@@ -31,13 +31,15 @@ public class GroupByOperator extends Eval implements Operator {
     List<OrderByElement> orderByElements;
     private OrderByOperator orderedChild;
     private TupleAggWrapper tupleAggWrapperForSort;
+    private String subquery_alias;
 
-    public GroupByOperator(List<Column> groupByColumns, List<SelectItem> selectItems, Operator operator) {
+    public GroupByOperator(List<Column> groupByColumns, List<SelectItem> selectItems, Operator operator,String subquery_alias) {
         this.child = operator;
         this.groupByColumns = groupByColumns;
         this.selectItems = selectItems;
         createSchema(selectItems);
         isFirstCall = true;
+        this.subquery_alias = subquery_alias;
     }
 
     private void createSchema(List<SelectItem> selectItems) {
@@ -61,6 +63,9 @@ public class GroupByOperator extends Eval implements Operator {
                         alias = String.valueOf(no_alias_cnt);
                         no_alias_cnt++;
                     }
+                }
+                if (subquery_alias != null){
+                    alias =  subquery_alias + "." + Utils.getColName(alias);
                 }
                 schema.put(alias, colCnt);
                 colCnt++;

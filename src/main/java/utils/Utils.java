@@ -2,6 +2,7 @@ package utils;
 
 
 import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 
 import java.util.*;
@@ -39,6 +40,16 @@ public class Utils {
             col2 = partsCol2[1];
         }
         return col1.equals(col2);
+
+    }
+    public static String getColName(String colKey){
+        String[] parts = colKey.split("\\.");
+        if (parts.length == 1){
+            return parts[0];
+        }
+        else{
+            return parts[1];
+        }
 
     }
 

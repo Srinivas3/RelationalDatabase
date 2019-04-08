@@ -22,12 +22,15 @@ public class ProjectionOperator extends Eval implements Operator {
     private int colCounter;
     private Map<String, Integer> schema;
     int no_alias_cnt;
+    String subquery_alias;
+    private LinkedHashMap<String, PrimitiveValue> tuple;
 
 
-    public ProjectionOperator(List<SelectItem> selectItems, Operator child) {
-
+    public ProjectionOperator(List<SelectItem> selectItems, Operator child, String subquery_alias) {
+        tuple = new LinkedHashMap<String, PrimitiveValue>();
         this.child = child;
         this.selectItems = selectItems;
+        this.subquery_alias = subquery_alias;
         setSchema();
         //TODO recursively check select expression for expression of type Function(EX:SUM(A) + AVG(B))
         for (SelectItem selectItem : selectItems) {
@@ -64,7 +67,7 @@ public class ProjectionOperator extends Eval implements Operator {
         return schema;
     }
 
-    private String getAlias(SelectExpressionItem selectExpressionItem) {
+    private String getSchemaColName(SelectExpressionItem selectExpressionItem) {
         String alias = selectExpressionItem.getAlias();
         if (alias == null) {
             Expression expression = selectExpressionItem.getExpression();
@@ -74,6 +77,9 @@ public class ProjectionOperator extends Eval implements Operator {
                 alias = expression.toString() + "_" + no_alias_cnt;
                 no_alias_cnt++;
             }
+        }
+        if (subquery_alias != null) {
+            return subquery_alias + "." + Utils.getColName(alias);
         }
         return alias;
 
@@ -87,27 +93,49 @@ public class ProjectionOperator extends Eval implements Operator {
         for (SelectItem selectItem : selectItems) {
             if (selectItem instanceof SelectExpressionItem) {
                 SelectExpressionItem selectExpressionItem = (SelectExpressionItem) selectItem;
-                String alias = getAlias(selectExpressionItem);
+                String alias = getSchemaColName(selectExpressionItem);
                 schema.put(alias, colCounter);
                 colCounter++;
             } else if (selectItem instanceof AllColumns) {
-                schema = childSchema;
+                setAllColumnsSubquerySchema();
                 return;
+
             } else if (selectItem instanceof AllTableColumns) {
                 String tableName = selectItem.toString().split("\\.")[0];
                 allColsFromChild(tableName, colNames);
             }
+        }
+
+    }
+
+    private void setAllColumnsSubquerySchema() {
+        Set<String> childCols = child.getSchema().keySet();
+        int colNum = 0;
+        for (String childColName : childCols) {
+            String colKey = getColKey(childColName);
+            schema.put(colKey, colNum);
+            colNum++;
         }
     }
 
     private void allColsFromChild(String table, Set<String> colNames) {
         for (String colName : colNames) {
             if (Utils.isSameTable(table, colName)) {
-                schema.put(colName, colCounter);
+                String colKey = getColKey(colName);
+                schema.put(colKey, colCounter);
                 colCounter++;
             }
         }
     }
+
+    private String getColKey(String colName) {
+        if (subquery_alias != null) {
+            return subquery_alias + "." + Utils.getColName(colName);
+        } else {
+            return colName;
+        }
+    }
+
 
     private Map<String, PrimitiveValue> aggregateNext() {
         childTuple = child.next();
@@ -119,7 +147,7 @@ public class ProjectionOperator extends Eval implements Operator {
         no_alias_cnt = 0;
         for (SelectItem selectItem : selectItems) {
             SelectExpressionItem selectExpressionItem = (SelectExpressionItem) selectItem;
-            String alias = getAlias(selectExpressionItem);
+            String alias = getSchemaColName(selectExpressionItem);
             Function functionExp = (Function) selectExpressionItem.getExpression();
             Aggregator aggregator = AggregateFactory.getAggregator(functionExp.getName());
             aggFunctions.put(alias, functionExp);
@@ -151,12 +179,12 @@ public class ProjectionOperator extends Eval implements Operator {
         if (childTuple == null) {
             return null;
         }
-        Map<String, PrimitiveValue> tuple = new LinkedHashMap<String, PrimitiveValue>();
         no_alias_cnt = 0;
+        Iterator<String> schemaItr = schema.keySet().iterator();
         for (SelectItem selectItem : selectItems) {
             if (selectItem instanceof SelectExpressionItem) {
                 SelectExpressionItem selectExpressionItem = (SelectExpressionItem) selectItem;
-                String alias = getAlias(selectExpressionItem);
+                String alias = getSchemaColName(selectExpressionItem);
                 Expression expression = selectExpressionItem.getExpression();
                 PrimitiveValue primVal = null;
                 try {
@@ -164,16 +192,16 @@ public class ProjectionOperator extends Eval implements Operator {
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-                tuple.put(alias, primVal);
-            } else if (selectItem instanceof AllColumns)
-                return childTuple;
-            else if (selectItem instanceof AllTableColumns)
-                insertAllCols(tuple, (AllTableColumns) selectItem);
-            else
+                tuple.put(schemaItr.next(), primVal);
+            } else if (selectItem instanceof AllColumns) {
+                insertAllCols(schemaItr);
+                return tuple;
+            } else if (selectItem instanceof AllTableColumns) {
+                insertAllTableCols((AllTableColumns) selectItem, schemaItr);
+            } else {
                 return null;
-
+            }
         }
-
         return tuple;
     }
 
@@ -186,14 +214,19 @@ public class ProjectionOperator extends Eval implements Operator {
     }
 
 
-    private void insertAllCols(Map<String, PrimitiveValue> tuple, AllTableColumns allTableColumns) {
+    private void insertAllTableCols(AllTableColumns allTableColumns, Iterator<String> schemaItr) {
         String tableName = allTableColumns.getTable().getName();
         for (String key : childTuple.keySet()) {
             String keyTableName = key.split("\\.")[0];
             if (keyTableName.equals(tableName))
-                tuple.put(key, childTuple.get(key));
+                tuple.put(schemaItr.next(), childTuple.get(key));
         }
+    }
 
+    private void insertAllCols(Iterator<String> schemaItr) {
+        for (String key : childTuple.keySet()) {
+            tuple.put(schemaItr.next(), childTuple.get(key));
+        }
 
     }
 

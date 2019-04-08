@@ -17,7 +17,7 @@ public class TreeBuilder {
         queryOptimizer = new QueryOptimizer();
     }
 
-    public Operator buildTree(PlainSelect plainSelect){
+    public Operator buildTree(PlainSelect plainSelect,String alias){
         FromItem fromItem = plainSelect.getFromItem();
 
         Operator operator = handleFromItem(fromItem);
@@ -36,7 +36,7 @@ public class TreeBuilder {
         List<Column> groupByColumns = plainSelect.getGroupByColumnReferences();
         List<SelectItem> selectItems = plainSelect.getSelectItems();
         if(groupByColumns!=null && groupByColumns.size()!=0){
-            operator = new GroupByOperator(groupByColumns, selectItems, operator);
+            operator = new GroupByOperator(groupByColumns, selectItems, operator,alias);
         }
 
         List<OrderByElement> orderByElements = plainSelect.getOrderByElements();
@@ -45,7 +45,7 @@ public class TreeBuilder {
         }
 
         if(groupByColumns==null || groupByColumns.size()==0){
-            operator = new ProjectionOperator(selectItems, operator);
+            operator = new ProjectionOperator(selectItems, operator,alias);
         }
 
         if (plainSelect.getLimit() != null){
@@ -58,12 +58,12 @@ public class TreeBuilder {
         Operator rightOperator = handleFromItem(rightFromItem);
         return new JoinOperator(leftOperator,rightOperator,join);
     }
-    public Operator buildTree(Union union){
+    public Operator buildTree(Union union,String alias){
         List<PlainSelect> plainSelects =  union.getPlainSelects();
-        Operator prevOperator = buildTree(plainSelects.get(0));
+        Operator prevOperator = buildTree(plainSelects.get(0),alias);
         int i = 1;
         while (i < plainSelects.size()){
-            Operator currOperator = buildTree(plainSelects.get(i));
+            Operator currOperator = buildTree(plainSelects.get(i),alias);
             prevOperator = new UnionOperator(prevOperator,currOperator);
             i++;
         }
@@ -77,7 +77,7 @@ public class TreeBuilder {
         }
         else if (fromItem instanceof SubSelect){
             SubSelect subselect = (SubSelect) fromItem;
-            return handleSelectBody(subselect.getSelectBody());
+            return handleSelectBody(subselect.getSelectBody(),subselect.getAlias());
 
         }
         else if (fromItem instanceof SubJoin){
@@ -91,13 +91,13 @@ public class TreeBuilder {
 
     }
 
-    public Operator handleSelectBody(SelectBody selectBody){
+    public Operator handleSelectBody(SelectBody selectBody,String alias){
         if (selectBody instanceof PlainSelect){
 
-            return buildTree((PlainSelect)selectBody);
+            return buildTree((PlainSelect)selectBody,alias);
         }
         else if (selectBody instanceof Union){
-            return buildTree((Union)selectBody);
+            return buildTree((Union)selectBody,alias);
         }
         else{
             return null;
