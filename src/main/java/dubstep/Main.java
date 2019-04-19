@@ -79,7 +79,7 @@ public class Main {
     }
 
     public static void displayOutput(Operator operator, BufferedWriter bufferedWriter) throws Exception {
-        printOperatorTree(operator,bufferedWriter);
+        //printOperatorTree(operator,bufferedWriter);
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
@@ -96,7 +96,7 @@ public class Main {
             }
             //bufferedWriter.write(counter);
             //bufferedWriter.write(". ");
-            //bufferedWriter.write(sb.toString() + "\n");
+            bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
         bufferedWriter.flush();
