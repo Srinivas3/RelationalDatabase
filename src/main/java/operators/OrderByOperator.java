@@ -99,7 +99,6 @@ public class OrderByOperator implements Operator {
             serializedChildTuples = null;
             return null;
         }
-
     }
 
     private Map<String, PrimitiveValue> readNextTupleFromSortedFile() {
@@ -139,32 +138,10 @@ public class OrderByOperator implements Operator {
         }
         child = null;
         serializedChildTuples = null;
-//        System.gc();
         initPriorityQueue();
-        //mergeAllFiles();
-        //sortedFileBufferedReader = openBufferedInput(finalSortedFileName);
         return Utils.convertToMap(getNextValueAndUpdateQueue(), idxToColName);
     }
 
-    private void mergeAllFiles() {
-        mergefilecount++;
-        try {
-            List<PrimitiveValue> nextTuplePrimVal = getNextValueAndUpdateQueue();
-            BufferedWriter sortedFileOos = openBufferedWriter(finalSortedFileName);
-            while (nextTuplePrimVal != null) {
-
-                sortedFileOos.write(tupleSerializer.serialize(nextTuplePrimVal) + "\n");
-//                sortedFileOos.write("\n");
-
-                nextTuplePrimVal = getNextValueAndUpdateQueue();
-            }
-            sortedFileOos.flush();
-            sortedFileOos.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-    }
 
 
     private String getNewFileName() {
@@ -175,17 +152,15 @@ public class OrderByOperator implements Operator {
     private String getFileName(int fileNameCounter) {
         return String.valueOf(directoryName) + "/" + String.valueOf(fileNameCounter);
     }
-
     private void sortAndWriteToFile(String fileName) {
         Collections.sort(serializedChildTuples, compareTuples);
         try {
-            BufferedWriter oos = openBufferedWriter(fileName);
+            BufferedWriter bufferedWriter = openBufferedWriter(fileName);
             for (List<PrimitiveValue> serializedChildTuple : serializedChildTuples) {
-                oos.write(tupleSerializer.serialize(serializedChildTuple) + "\n");
-//                oos.write("\n");
+                bufferedWriter.write(tupleSerializer.serialize(serializedChildTuple) + "\n");
             }
-            oos.flush();
-            oos.close();
+            bufferedWriter.flush();
+            bufferedWriter.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {

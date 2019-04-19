@@ -46,6 +46,7 @@ public class TreeBuilder {
 
         if(groupByColumns==null || groupByColumns.size()==0){
             operator = new ProjectionOperator(selectItems, operator,alias);
+            //queryOptimizer.getOptimizedOperator(operator);
         }
 
         if (plainSelect.getLimit() != null){

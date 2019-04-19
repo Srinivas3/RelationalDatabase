@@ -14,9 +14,10 @@ import java.sql.SQLException;
 import java.util.*;
 
 public class ProjectionOperator extends Eval implements Operator {
-    List<SelectItem> selectItems;
-    Operator child;
-    Map<String, PrimitiveValue> childTuple;
+
+    private List<SelectItem> selectItems;
+    private Operator child;
+    private Map<String, PrimitiveValue> childTuple;
     boolean isAggregate = false;
     boolean isFirstCall = true;
     private int colCounter;
@@ -43,6 +44,14 @@ public class ProjectionOperator extends Eval implements Operator {
             }
         }
     }
+    public List<SelectItem> getSelectItems() {
+        return selectItems;
+    }
+
+    public void setSelectItems(List<SelectItem> selectItems) {
+        this.selectItems = selectItems;
+    }
+
 
     public PrimitiveValue eval(Column x) {
 

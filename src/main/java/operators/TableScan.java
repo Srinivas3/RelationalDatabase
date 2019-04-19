@@ -66,7 +66,7 @@ public class TableScan implements Operator {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (line == null || line == "") {
+        if (line == null || line.equals("") ){
             return null;
         }
 

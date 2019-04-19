@@ -3,6 +3,7 @@ package utils;
 
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 
 import java.util.*;
@@ -51,6 +52,18 @@ public class Utils {
             return parts[1];
         }
 
+    }
+    public static Column getColumn(String colName){
+        Column column = new Column();
+        String[] parts = colName.split("\\.");
+        if (parts.length == 1){
+           column.setColumnName(parts[0]);
+        }
+        else{
+            column.setTable(new Table(parts[0]));
+            column.setColumnName(parts[1]);
+        }
+        return column;
     }
 
     public static PrimitiveValue getColValue(String tableName, String colName, Map<String, PrimitiveValue> tuple) {

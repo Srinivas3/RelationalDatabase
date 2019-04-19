@@ -21,7 +21,6 @@ import utils.Utils;
 
 public class Main {
     private static boolean is_testMode = false;
-
     public static void main(String args[]) throws ParseException, FileNotFoundException {
         try {
             if (is_testMode) {
@@ -37,8 +36,8 @@ public class Main {
             } else {
                 Utils.inMemoryMode = true;
             }
+            System.out.println("$>");
             List<Long> execution_times = new ArrayList<Long>();
-            System.out.println("$> ");
             CCJSqlParser parser = new CCJSqlParser(System.in);
             Statement statement;
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
@@ -55,7 +54,7 @@ public class Main {
                     List<ColumnDefinition> colDefs = createTable.getColumnDefinitions();
                     Utils.nameToColDefs.put(tableName, colDefs);
                 } else {
-                    System.out.println("Invalid Query");
+                    bufferedWriter.write("Invalid Query");
                 }
                 bufferedWriter.write("$>" + "\n");
                 bufferedWriter.flush();
@@ -80,7 +79,7 @@ public class Main {
     }
 
     public static void displayOutput(Operator operator, BufferedWriter bufferedWriter) throws Exception {
-        // printOperatorTree(operator);
+        printOperatorTree(operator,bufferedWriter);
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
@@ -95,9 +94,9 @@ public class Main {
                     sb.append("|");
                 i += 1;
             }
-            //System.out.print(counter);
-            //System.out.print(". ");
-            bufferedWriter.write(sb.toString() + "\n");
+            //bufferedWriter.write(counter);
+            //bufferedWriter.write(". ");
+            //bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
         bufferedWriter.flush();
@@ -106,59 +105,65 @@ public class Main {
 
 
     //long time2 = System.currentTimeMillis();
-    //System.out.println(time2-time1);
+    //bufferedWriter.write(time2-time1);
 
 
-    public static void printSchema(Map<String, Integer> schema) {
+    public static void printSchema(Map<String, Integer> schema,BufferedWriter bufferedWriter) throws Exception{
         Set<String> colNames = schema.keySet();
         for (String col : colNames) {
-            System.out.print(col + " ");
+            bufferedWriter.write(col + " ");
         }
     }
 
-    public static void printOperatorTree(Operator operator) {
+    public static void printOperatorTree(Operator operator,BufferedWriter bufferedWriter) throws Exception {
         if (operator instanceof ProjectionOperator) {
             ProjectionOperator projectionOperator = (ProjectionOperator) operator;
             projectionOperator.getSchema();
-            System.out.print("ProjectionOperator with schema: ");
-            printSchema(projectionOperator.getSchema());
-            System.out.println();
-            printOperatorTree(projectionOperator.getChild());
+            bufferedWriter.write("ProjectionOperator with schema: ");
+            printSchema(projectionOperator.getSchema(),bufferedWriter);
+            bufferedWriter.newLine();
+            printOperatorTree(projectionOperator.getChild(),bufferedWriter);
         }
         if (operator instanceof SelectionOperator) {
             SelectionOperator selectionOperator = (SelectionOperator) operator;
-            System.out.println("Selection Operator, where condition: " + selectionOperator.getWhereExp().toString());
-            printOperatorTree(selectionOperator.getChild());
+            bufferedWriter.write("Selection Operator, where condition: " + selectionOperator.getWhereExp().toString());
+            printOperatorTree(selectionOperator.getChild(),bufferedWriter);
         }
         if (operator instanceof JoinOperator) {
             JoinOperator joinOperator = (JoinOperator) operator;
             if (joinOperator.getJoin().isSimple()) {
-                System.out.println("Simple Join Operator");
+                bufferedWriter.write("Simple Join Operator");
             } else if (joinOperator.getJoin().isNatural()) {
-                System.out.println("Natural Join Operator");
+                bufferedWriter.write("Natural Join Operator");
             } else {
-                System.out.println("Equi Join on " + joinOperator.getJoin().getOnExpression());
+                bufferedWriter.write("Equi Join on " + joinOperator.getJoin().getOnExpression());
             }
-            System.out.println("Join left child");
-            printOperatorTree(joinOperator.getLeftChild());
-            System.out.println("Join right child");
-            printOperatorTree(joinOperator.getRightChild());
+            bufferedWriter.newLine();
+            bufferedWriter.write("Join left child");
+            bufferedWriter.newLine();
+            printOperatorTree(joinOperator.getLeftChild(),bufferedWriter);
+            bufferedWriter.write("Join right child");
+            bufferedWriter.newLine();
+            printOperatorTree(joinOperator.getRightChild(),bufferedWriter);
         }
 
 
         if (operator instanceof TableScan) {
             TableScan tableScan = (TableScan) operator;
-            System.out.println("TableScan Operator on table " + tableScan.getTableName());
+            bufferedWriter.write("TableScan Operator on table " + tableScan.getTableName());
+            bufferedWriter.newLine();
         }
         if (operator instanceof InMemoryCacheOperator) {
             InMemoryCacheOperator memoryCacheOperator = (InMemoryCacheOperator) operator;
-            System.out.println("InMemoryCacheOperator");
-            printOperatorTree(memoryCacheOperator.getChild());
+            bufferedWriter.write("InMemoryCacheOperator");
+            bufferedWriter.newLine();
+            printOperatorTree(memoryCacheOperator.getChild(),bufferedWriter);
         }
         if (operator instanceof OnDiskCacheOperator) {
             OnDiskCacheOperator diskCacheOperator = (OnDiskCacheOperator) operator;
-            System.out.println("OnDiskCacheOperator");
-            printOperatorTree(diskCacheOperator.getChild());
+            bufferedWriter.write("OnDiskCacheOperator");
+            bufferedWriter.newLine();
+            printOperatorTree(diskCacheOperator.getChild(),bufferedWriter);
         }
 
     }

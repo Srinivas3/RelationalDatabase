@@ -2,14 +2,17 @@ package optimizer;
 
 import net.sf.jsqlparser.eval.Eval;
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.PrimitiveValue;
+import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.statement.select.Join;
+import net.sf.jsqlparser.statement.select.*;
 import operators.*;
 import operators.joins.JoinOperator;
+import utils.Utils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +25,9 @@ public class QueryOptimizer extends Eval {
         if (operator instanceof SelectionOperator){
             return pushDown((SelectionOperator)operator);
         }
+        else if (operator instanceof ProjectionOperator){
+            return pushDown((ProjectionOperator)operator);
+        }
         else{
             return operator;
         }
@@ -29,17 +35,8 @@ public class QueryOptimizer extends Eval {
     }
     private Operator pushDown(SelectionOperator selectionOperator){
         Operator child = selectionOperator.getChild();
-        if (child instanceof ProjectionOperator){
-            return pushDown(selectionOperator,(ProjectionOperator)child);
-        }
-        else if (child instanceof JoinOperator){
+        if (child instanceof JoinOperator){
             return pushDown(selectionOperator,(JoinOperator)child);
-        }
-        else if (child instanceof InMemoryCacheOperator){
-            return pushDown(selectionOperator,(InMemoryCacheOperator)child);
-        }
-        else if (child instanceof OnDiskCacheOperator){
-            return pushDown(selectionOperator,(OnDiskCacheOperator)child);
         }
         else{
             return selectionOperator;
@@ -47,23 +44,77 @@ public class QueryOptimizer extends Eval {
 
     }
 
-    private Operator pushDown(SelectionOperator parent, OnDiskCacheOperator cache) {
-        Operator temp = cache.getChild();
-        parent.setChild(temp);
-        cache.setChild(pushDown(parent));
-        return cache;
+    private Operator pushDown(ProjectionOperator projectionOperator){
+
+        SelectItem selectItem = projectionOperator.getSelectItems().get(0);
+        if(selectItem instanceof AllColumns){
+            return projectionOperator;
+        }
+        if (selectItem instanceof SelectExpressionItem){
+            SelectExpressionItem selectExpressionItem = (SelectExpressionItem)selectItem;
+            if (selectExpressionItem.getExpression() instanceof  Function){
+                return projectionOperator;
+            }
+        }
+        if (projectionOperator.getChild() instanceof JoinOperator){
+            return pushDown(projectionOperator,(JoinOperator)projectionOperator.getChild());
+        }
+        return projectionOperator;
+    }
+    private Operator pushDown(ProjectionOperator projectionParent,JoinOperator joinChild){
+        List<SelectItem> selectItems = projectionParent.getSelectItems();
+        List<Expression> projectionExpressions = new ArrayList<Expression>();
+        for (SelectItem selectItem: selectItems){
+            if (selectItem instanceof  SelectExpressionItem){
+                SelectExpressionItem selectExpressionItem = (SelectExpressionItem)selectItem;
+                projectionExpressions.add(selectExpressionItem.getExpression());
+            }
+            else{
+                return projectionParent;
+            }
+        }
+        Expression expression = constructByAdding(projectionExpressions);
+        columnsInExp = new ArrayList<String>();
+        populateColumnsInExp(expression);
+        Map<String,Integer> leftChildSchema = joinChild.getLeftChild().getSchema();
+        Map<String,Integer> rightChildSchema = joinChild.getRightChild().getSchema();
+        Set<String>  leftColNames = new HashSet<String>();
+        Set<String>  rightColNames = new HashSet<String>();
+        for(String colName: columnsInExp){
+            if (leftChildSchema.get(colName) != null){
+                leftColNames.add(colName);
+            }
+            if (rightChildSchema.get(colName) != null){
+                rightColNames.add(colName);
+            }
+        }
+        ProjectionOperator leftProjectionOperator = constructProjectionOperator(leftColNames,joinChild.getLeftChild());
+        ProjectionOperator rightProjectionOperator = constructProjectionOperator(rightColNames,joinChild.getRightChild());
+        if (leftProjectionOperator != null){
+            joinChild.setChild("left",leftProjectionOperator);
+        }
+        if (rightProjectionOperator != null){
+            joinChild.setChild("right",rightProjectionOperator);
+        }
+        pushDown(leftProjectionOperator);
+        pushDown(rightProjectionOperator);
+        return projectionParent;
     }
 
-    private Operator pushDown(SelectionOperator parent, InMemoryCacheOperator cache) {
-        Operator temp = cache.getChild();
-        parent.setChild(temp);
-        cache.setChild(pushDown(parent));
-        return cache;
+    private ProjectionOperator constructProjectionOperator(Set<String> colNames, Operator child) {
+        if (colNames.size() == 0){
+            return null;
+        }
+        List<SelectItem> selectItems = new ArrayList<SelectItem>();
+        for (String colName: colNames){
+            Column column = Utils.getColumn(colName);
+            SelectExpressionItem selectExpressionItem = new SelectExpressionItem();
+            selectExpressionItem.setExpression(column);
+            selectItems.add(selectExpressionItem);
+        }
+        return new ProjectionOperator(selectItems,child,null);
     }
 
-    private Operator pushDown(SelectionOperator parent,ProjectionOperator child){
-        return parent;
-    }
     private Operator pushDown(SelectionOperator selectParent, JoinOperator joinChild){
         List<Expression> selectAndExpressions = new ArrayList<Expression>();
         populateAndExpressions(selectParent.getWhereExp(),selectAndExpressions);
@@ -165,6 +216,15 @@ public class QueryOptimizer extends Eval {
         catch (Exception e){
             //e.printStackTrace();
         }
+    }
+    private Expression constructByAdding(List<Expression> expressions){
+        Iterator<Expression> expItr = expressions.iterator();
+        Expression finalExp = expItr.next();
+        while (expItr.hasNext()){
+            finalExp = new Addition(finalExp,expItr.next());
+        }
+        return finalExp;
+
     }
 
 
