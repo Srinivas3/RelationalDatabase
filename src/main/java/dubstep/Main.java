@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.sf.jsqlparser.statement.create.table.ColDataType;
 import operators.*;
 import buildtree.TreeBuilder;
 import net.sf.jsqlparser.expression.PrimitiveValue;
@@ -22,7 +23,7 @@ import utils.Utils;
 public class Main {
     private static boolean is_testMode = false;
     private static boolean isPhaseOne = false;
-    private static String createStatementsDir = "creates";
+    private static String colDefsDir = "colDefsDir";
     private static boolean areDirsCreated = false;
 
     public static void main(String args[]) throws ParseException, FileNotFoundException {
@@ -63,7 +64,7 @@ public class Main {
                         areDirsCreated = false;
                     }
                     saveTableSchema((CreateTable) statement);
-                    saveCreateStatement((CreateTable)statement);
+                    saveColDefsToDisk((CreateTable) statement);
 
                 } else {
                     bufferedWriter.write("Invalid Query");
@@ -84,22 +85,28 @@ public class Main {
         }
     }
 
-    private static void saveCreateStatement(CreateTable createTableStatement) {
-        String createStatement = createTableStatement.toString();
+    private static void saveColDefsToDisk(CreateTable createTableStatement) {
+        List<ColumnDefinition> columnDefinitions = createTableStatement.getColumnDefinitions();
         String tableName = createTableStatement.getTable().getName();
-        File createStatementFile = new File(createStatementsDir, tableName);
+        File colDefsFile = new File(colDefsDir, tableName);
         try {
-            FileWriter fr = new FileWriter(createStatementFile);
-            fr.write(createStatement + ";");
-            fr.flush();
-            fr.close();
+            FileWriter fileWriter = new FileWriter(colDefsFile);
+            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+            for (ColumnDefinition colDef : columnDefinitions) {
+                String colName = colDef.getColumnName();
+                String colDataType = colDef.getColDataType().getDataType();
+                bufferedWriter.write(colName + "," + colDataType);
+                bufferedWriter.newLine();
+            }
+            bufferedWriter.flush();
+            bufferedWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
     private static void createDirs() {
-        new File(createStatementsDir).mkdir();
+        new File(colDefsDir).mkdir();
     }
 
     private static void loadSavedState() {
@@ -107,32 +114,34 @@ public class Main {
     }
 
     private static void loadSchemas() {
-        File dir = new File(createStatementsDir);
-        File[] createStatementFiles = dir.listFiles();
-        for (File createStatementFile : createStatementFiles) {
-            try {
-                CCJSqlParser parser = new CCJSqlParser(new FileInputStream(createStatementFile));
-                Statement statement = parser.Statement();
-                saveTableSchema((CreateTable) statement);
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (ParseException e) {
-                try {
-                    BufferedReader brReader = new BufferedReader(new FileReader(createStatementFile));
-                    System.out.println("An exception occurred in line main line 122");
-                    String line = null;
-                    while ((line = brReader.readLine()) != null){
-                        System.out.println(line);
-                    }
-                } catch (FileNotFoundException e1) {
-                    e1.printStackTrace();
-                } catch (IOException e1) {
-                    e1.printStackTrace();
-                }
-                e.printStackTrace();
-            }
+        File dir = new File(colDefsDir);
+        File[] colDefFiles = dir.listFiles();
+        for (File colDefsFile : colDefFiles) {
+            saveTableSchema(colDefsFile);
         }
 
+    }
+
+    private static void saveTableSchema(File colDefsFile) {
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(colDefsFile));
+            List<ColumnDefinition> columnDefinitions = new ArrayList<ColumnDefinition>();
+            String line = null;
+            while ((line = bufferedReader.readLine()) != null) {
+                String parts[] = line.split(",");
+                ColumnDefinition columnDefinition = new ColumnDefinition();
+                columnDefinition.setColumnName(parts[0]);
+                ColDataType colDataType = new ColDataType();
+                colDataType.setDataType(parts[1]);
+                columnDefinition.setColDataType(colDataType);
+                columnDefinitions.add(columnDefinition);
+            }
+            Utils.nameToColDefs.put(colDefsFile.getName(),columnDefinitions);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private static void saveTableSchema(CreateTable statement) {
