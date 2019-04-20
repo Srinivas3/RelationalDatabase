@@ -112,10 +112,23 @@ public class Main {
         for (File createStatementFile : createStatementFiles) {
             try {
                 CCJSqlParser parser = new CCJSqlParser(new FileInputStream(createStatementFile));
-                saveTableSchema((CreateTable) parser.Statement());
+                Statement statement = parser.Statement();
+                saveTableSchema((CreateTable) statement);
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (ParseException e) {
+                try {
+                    BufferedReader brReader = new BufferedReader(new FileReader(createStatementFile));
+                    System.out.println("An exception occurred in line main line 122");
+                    String line = null;
+                    while ((line = brReader.readLine()) != null){
+                        System.out.println(line);
+                    }
+                } catch (FileNotFoundException e1) {
+                    e1.printStackTrace();
+                } catch (IOException e1) {
+                    e1.printStackTrace();
+                }
                 e.printStackTrace();
             }
         }
