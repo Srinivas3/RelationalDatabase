@@ -21,6 +21,10 @@ import utils.Utils;
 
 public class Main {
     private static boolean is_testMode = false;
+    private static boolean isPhaseOne = false;
+    private static String createStatementsDir = "creates";
+    private static boolean areDirsCreated = false;
+
     public static void main(String args[]) throws ParseException, FileNotFoundException {
         try {
             if (is_testMode) {
@@ -40,19 +44,27 @@ public class Main {
             List<Long> execution_times = new ArrayList<Long>();
             CCJSqlParser parser = new CCJSqlParser(System.in);
             Statement statement;
+            List<String> createStatements = null;
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
             while ((statement = parser.Statement()) != null) {
                 if (statement instanceof Select) {
+                    if (!isPhaseOne) {
+                        loadSavedState();
+                    }
                     long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     displayOutput(root, bufferedWriter);
                     long endTime = System.currentTimeMillis();
                     execution_times.add(endTime - startTime);
                 } else if (statement instanceof CreateTable) {
-                    CreateTable createTable = (CreateTable) statement;
-                    String tableName = createTable.getTable().getName();
-                    List<ColumnDefinition> colDefs = createTable.getColumnDefinitions();
-                    Utils.nameToColDefs.put(tableName, colDefs);
+                    isPhaseOne = true;
+                    if (!areDirsCreated) {
+                        createDirs();
+                        areDirsCreated = false;
+                    }
+                    saveTableSchema((CreateTable) statement);
+                    saveCreateStatement((CreateTable)statement);
+
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
@@ -70,6 +82,51 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void saveCreateStatement(CreateTable createTableStatement) {
+        String createStatement = createTableStatement.toString();
+        String tableName = createTableStatement.getTable().getName();
+        File createStatementFile = new File(createStatementsDir, tableName);
+        try {
+            FileWriter fr = new FileWriter(createStatementFile);
+            fr.write(createStatement);
+            fr.flush();
+            fr.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void createDirs() {
+        new File(createStatementsDir).mkdir();
+    }
+
+    private static void loadSavedState() {
+        loadSchemas();
+    }
+
+    private static void loadSchemas() {
+        File dir = new File(createStatementsDir);
+        File[] createStatementFiles = dir.listFiles();
+        for (File createStatementFile : createStatementFiles) {
+            try {
+                CCJSqlParser parser = new CCJSqlParser(new FileInputStream(createStatementFile));
+                saveTableSchema((CreateTable) parser.Statement());
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+        }
+
+    }
+
+    private static void saveTableSchema(CreateTable statement) {
+        CreateTable createTable = statement;
+        String tableName = createTable.getTable().getName();
+        List<ColumnDefinition> colDefs = createTable.getColumnDefinitions();
+        Utils.nameToColDefs.put(tableName, colDefs);
     }
 
     public static Operator handleSelect(Select select) {
@@ -108,26 +165,26 @@ public class Main {
     //bufferedWriter.write(time2-time1);
 
 
-    public static void printSchema(Map<String, Integer> schema,BufferedWriter bufferedWriter) throws Exception{
+    public static void printSchema(Map<String, Integer> schema, BufferedWriter bufferedWriter) throws Exception {
         Set<String> colNames = schema.keySet();
         for (String col : colNames) {
             bufferedWriter.write(col + " ");
         }
     }
 
-    public static void printOperatorTree(Operator operator,BufferedWriter bufferedWriter) throws Exception {
+    public static void printOperatorTree(Operator operator, BufferedWriter bufferedWriter) throws Exception {
         if (operator instanceof ProjectionOperator) {
             ProjectionOperator projectionOperator = (ProjectionOperator) operator;
             projectionOperator.getSchema();
             bufferedWriter.write("ProjectionOperator with schema: ");
-            printSchema(projectionOperator.getSchema(),bufferedWriter);
+            printSchema(projectionOperator.getSchema(), bufferedWriter);
             bufferedWriter.newLine();
-            printOperatorTree(projectionOperator.getChild(),bufferedWriter);
+            printOperatorTree(projectionOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof SelectionOperator) {
             SelectionOperator selectionOperator = (SelectionOperator) operator;
             bufferedWriter.write("Selection Operator, where condition: " + selectionOperator.getWhereExp().toString());
-            printOperatorTree(selectionOperator.getChild(),bufferedWriter);
+            printOperatorTree(selectionOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof JoinOperator) {
             JoinOperator joinOperator = (JoinOperator) operator;
@@ -141,10 +198,10 @@ public class Main {
             bufferedWriter.newLine();
             bufferedWriter.write("Join left child");
             bufferedWriter.newLine();
-            printOperatorTree(joinOperator.getLeftChild(),bufferedWriter);
+            printOperatorTree(joinOperator.getLeftChild(), bufferedWriter);
             bufferedWriter.write("Join right child");
             bufferedWriter.newLine();
-            printOperatorTree(joinOperator.getRightChild(),bufferedWriter);
+            printOperatorTree(joinOperator.getRightChild(), bufferedWriter);
         }
 
 
@@ -157,13 +214,13 @@ public class Main {
             InMemoryCacheOperator memoryCacheOperator = (InMemoryCacheOperator) operator;
             bufferedWriter.write("InMemoryCacheOperator");
             bufferedWriter.newLine();
-            printOperatorTree(memoryCacheOperator.getChild(),bufferedWriter);
+            printOperatorTree(memoryCacheOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof OnDiskCacheOperator) {
             OnDiskCacheOperator diskCacheOperator = (OnDiskCacheOperator) operator;
             bufferedWriter.write("OnDiskCacheOperator");
             bufferedWriter.newLine();
-            printOperatorTree(diskCacheOperator.getChild(),bufferedWriter);
+            printOperatorTree(diskCacheOperator.getChild(), bufferedWriter);
         }
 
     }
