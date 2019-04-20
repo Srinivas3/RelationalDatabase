@@ -90,7 +90,7 @@ public class Main {
         File createStatementFile = new File(createStatementsDir, tableName);
         try {
             FileWriter fr = new FileWriter(createStatementFile);
-            fr.write(createStatement);
+            fr.write(createStatement + ";");
             fr.flush();
             fr.close();
         } catch (IOException e) {
