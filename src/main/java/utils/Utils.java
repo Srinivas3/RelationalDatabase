@@ -74,7 +74,14 @@ public class Utils {
             return tuple.get(tableName + "." + colName);
         else {
             for (String key : tuple.keySet()) {
-                String keyCol = key.split("\\.")[1];
+                String parts[] = key.split("\\.");
+                String keyCol = null;
+                if (parts.length == 2){
+                    keyCol = parts[1];
+                } else {
+                    keyCol = parts[0];
+                }
+
                 if (colName.equals(keyCol))
                     return tuple.get(key);
             }
