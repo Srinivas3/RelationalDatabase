@@ -1,5 +1,6 @@
 package operators;
 
+
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
@@ -10,11 +11,14 @@ import java.util.List;
 import java.util.Map;
 import java.io.*;
 
+import dubstep.Main;
+
+
 public class TableScan implements Operator {
     static final String format = ".csv";
     Table table;
     String filePath;
-    BufferedReader br;
+    DataInputStream dataInputStream;
     List<ColumnDefinition> colDefs;
     Map<String, PrimitiveValue> tuple;
     String tableName;
@@ -60,51 +64,61 @@ public class TableScan implements Operator {
     }
 
     public Map<String, PrimitiveValue> next() {
-        String line = null;
         try {
-            line = br.readLine();
+            if (dataInputStream.available() > 0) {
+                readTuple();
+                return tuple;
+            } else {
+                return null;
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        if (line == null || line.equals("") ){
-            return null;
-        }
+        return null;
+    }
 
-        String[] colValues = line.split("\\|");
-        int i = 0;
+    private void readTuple() throws IOException {
         for (ColumnDefinition colDef : colDefs) {
             String colName = colDef.getColumnName();
-            String colVal = colValues[i];
             String dataType = colDef.getColDataType().getDataType().toLowerCase();
-            PrimitiveValue primVal = getPrimitiveValue(dataType, colVal);
+            PrimitiveValue primVal = getPrimitiveValue(dataType);
             String tableColName = this.tableName + "." + colName;
             tuple.put(tableColName, primVal);
-            i++;
         }
-        return tuple;
     }
 
     public void init() {
         try {
-            if (br != null) {
-                br.close();
+            if (dataInputStream != null) {
+                dataInputStream.close();
             }
-            br = new BufferedReader(new FileReader(new File(filePath)));
+            File compressedTableFile = new File(Main.compressedTablesDir, tableName);
+            FileInputStream fileInputStream = new FileInputStream(compressedTableFile);
+            fileInputStream.available();
+            BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
+            dataInputStream = new DataInputStream(bufferedInputStream);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private PrimitiveValue getPrimitiveValue(String dataType, String value) {
-        if (dataType.equals("string") || dataType.equals("char") || dataType.equals("varchar"))
-            return new StringValue(value);
-        else if (dataType.equals("int"))
-            return new LongValue(value);
-        else if (dataType.equals("decimal") || dataType.equals("float"))
-            return new DoubleValue(value);
-        else if (dataType.equals("date"))
-            return new DateValue(value);
-        else
+    private PrimitiveValue getPrimitiveValue(String dataType) throws IOException {
+        if (dataType.equals("string") || dataType.equals("char") || dataType.equals("varchar") || dataType.equals("date")) {
+            int numBytes = dataInputStream.readInt();
+            byte byteArr[] = new byte[numBytes];
+            dataInputStream.readFully(byteArr);
+            String value = new String(byteArr);
+            if (dataType.equals("date")) {
+                return new DateValue(value);
+            } else {
+                return new StringValue(value);
+            }
+        } else if (dataType.equals("int")) {
+            return new LongValue(dataInputStream.readInt());
+        } else if (dataType.equals("decimal") || dataType.equals("float")) {
+            return new DoubleValue(dataInputStream.readDouble());
+        } else {
             return null;
+        }
     }
 }

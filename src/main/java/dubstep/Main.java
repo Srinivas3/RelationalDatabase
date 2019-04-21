@@ -6,10 +6,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
 import operators.*;
 import buildtree.TreeBuilder;
-import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.ParseException;
 import net.sf.jsqlparser.statement.Statement;
@@ -25,6 +26,8 @@ public class Main {
     private static boolean isPhaseOne = false;
     private static String colDefsDir = "colDefsDir";
     private static boolean areDirsCreated = false;
+    public static String compressedTablesDir = "compressedTablesDir";
+    private static String format = ".csv";
 
     public static void main(String args[]) throws ParseException, FileNotFoundException {
         try {
@@ -58,14 +61,15 @@ public class Main {
                     long endTime = System.currentTimeMillis();
                     execution_times.add(endTime - startTime);
                 } else if (statement instanceof CreateTable) {
+                    CreateTable createTableStatement = (CreateTable)statement;
                     isPhaseOne = true;
                     if (!areDirsCreated) {
                         createDirs();
                         areDirsCreated = false;
                     }
-                    saveTableSchema((CreateTable) statement);
-                    saveColDefsToDisk((CreateTable) statement);
-
+                    saveTableSchema(createTableStatement);
+                    saveColDefsToDisk(createTableStatement);
+                    scanTable(createTableStatement);
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
@@ -84,6 +88,55 @@ public class Main {
             e.printStackTrace();
         }
     }
+
+    private static void scanTable(CreateTable createTableStatement) {
+        Table table = createTableStatement.getTable();
+        String tableName = table.getName();
+        File tableFile = new File("data", tableName + format);
+        File compressedTableFile = new File(compressedTablesDir, tableName);
+        List<ColumnDefinition> colDefs = Utils.nameToColDefs.get(tableName);
+
+        try {
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(compressedTableFile));
+            DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(tableFile));
+            String line = null;
+            while ((line = bufferedReader.readLine()) != null) {
+                String tupleArr[] = line.split("\\|");
+                for (int i = 0; i < tupleArr.length; i++) {
+                    writeBytes(dataOutputStream, tupleArr[i], colDefs.get(i));
+                }
+
+            }
+            bufferedReader.close();
+            dataOutputStream.flush();
+            dataOutputStream.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void writeBytes(DataOutputStream dataOutputStream, String colInString, ColumnDefinition columnDefinition) {
+        String dataType = columnDefinition.getColDataType().getDataType().toLowerCase();
+        try {
+            if (dataType.equals("string") || dataType.equals("char") || dataType.equals("varchar") || dataType.equals("date")) {
+                dataOutputStream.writeInt(colInString.length());
+                dataOutputStream.write(colInString.getBytes());
+            } else if (dataType.equals("int")) {
+                dataOutputStream.writeInt(Integer.valueOf(colInString));
+            } else if (dataType.equals("decimal") || dataType.equals("float")) {
+                dataOutputStream.writeDouble(Double.valueOf(colInString));
+            } else {
+                throw new Exception("invalid data type " + dataType);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     private static void saveColDefsToDisk(CreateTable createTableStatement) {
         List<ColumnDefinition> columnDefinitions = createTableStatement.getColumnDefinitions();
@@ -107,6 +160,7 @@ public class Main {
 
     private static void createDirs() {
         new File(colDefsDir).mkdir();
+        new File(compressedTablesDir).mkdir();
     }
 
     private static void loadSavedState() {
@@ -136,7 +190,7 @@ public class Main {
                 columnDefinition.setColDataType(colDataType);
                 columnDefinitions.add(columnDefinition);
             }
-            Utils.nameToColDefs.put(colDefsFile.getName(),columnDefinitions);
+            Utils.nameToColDefs.put(colDefsFile.getName(), columnDefinitions);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
