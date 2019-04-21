@@ -1,14 +1,15 @@
 package dubstep;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
+import Indexes.IndexFactory;
+import Indexes.IntegerIndex;
+import Indexes.PrimaryIndex;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColDataType;
+import net.sf.jsqlparser.statement.create.table.Index;
 import operators.*;
 import buildtree.TreeBuilder;
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -28,8 +29,10 @@ public class Main {
     private static boolean areDirsCreated = false;
     public static String compressedTablesDir = "compressedTablesDir";
     public static String linesDir = "lines";
+    public static String primaryIndexDir = "primaryIndicesDir";
     private static String format = ".csv";
     private static boolean isFirstSelect = true;
+    private static IndexFactory indexFactory = new IndexFactory();
 
     public static void main(String args[]) throws ParseException, FileNotFoundException {
         try {
@@ -74,6 +77,8 @@ public class Main {
                     saveColDefsToDisk(createTableStatement);
                     scanTable(createTableStatement);
                     saveTableToLines(createTableStatement);
+                    buildIndexAndSave(createTableStatement);
+//                    printIndex(Utils.colToIndexes.get("R.A"));
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
@@ -91,6 +96,41 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void buildIndexAndSave(CreateTable createTableStatement) {
+        Table table = createTableStatement.getTable();
+        List<Index> indexes = createTableStatement.getIndexes();
+        if (indexes == null || indexes.isEmpty()) {
+            return;
+        }
+        for (Index index : indexes) {
+            if (index.getType().equalsIgnoreCase("PRIMARY KEY")) {
+                String colName = index.getColumnsNames().get(0);
+                PrimaryIndex primaryIndex = indexFactory.getIndex(table, colName);
+                String keyFileName = table.getName() + "." + colName;
+                Utils.colToIndexes.put(keyFileName, primaryIndex);
+                writeIndexToFile(keyFileName, primaryIndex);
+            }
+        }
+    }
+
+    private static void writeIndexToFile(String keyFileName, PrimaryIndex primaryIndex) {
+        File indexFile = new File(primaryIndexDir, keyFileName);
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream(indexFile);
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+            DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
+            primaryIndex.serializeToStream(dataOutputStream);
+            dataOutputStream.flush();
+            dataOutputStream.close();
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     private static void saveTableToLines(CreateTable createTableStatement) {
@@ -143,12 +183,12 @@ public class Main {
     private static void writeBytes(DataOutputStream dataOutputStream, String colInString, ColumnDefinition columnDefinition) {
         String dataType = columnDefinition.getColDataType().getDataType().toLowerCase();
         try {
-            if (dataType.equals("string") || dataType.equals("char") || dataType.equals("varchar") || dataType.equals("date")) {
+            if (dataType.equalsIgnoreCase("string") || dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("date")) {
                 dataOutputStream.writeInt(colInString.length());
                 dataOutputStream.write(colInString.getBytes());
-            } else if (dataType.equals("int")) {
+            } else if (dataType.equalsIgnoreCase("int")) {
                 dataOutputStream.writeInt(Integer.valueOf(colInString));
-            } else if (dataType.equals("decimal") || dataType.equals("float")) {
+            } else if (dataType.equalsIgnoreCase("decimal") || dataType.equalsIgnoreCase("float")) {
                 dataOutputStream.writeDouble(Double.valueOf(colInString));
             } else {
                 throw new Exception("invalid data type " + dataType);
@@ -184,20 +224,42 @@ public class Main {
         new File(colDefsDir).mkdir();
         new File(compressedTablesDir).mkdir();
         new File(linesDir).mkdir();
+        new File(primaryIndexDir).mkdir();
     }
 
     private static void loadSavedState() {
         loadSchemas();
         loadTableLines();
+        loadIndexes();
+    }
+
+    private static void loadIndexes() {
+        File primaryIndexesDirFile = new File(primaryIndexDir);
+        File[] files = primaryIndexesDirFile.listFiles();
+        for (File indexFile : files) {
+            loadIndex(indexFile);
+        }
+    }
+
+    private static void loadIndex(File indexFile) {
+        PrimaryIndex primaryIndex = indexFactory.getIndex(indexFile);
+        Utils.colToIndexes.put(indexFile.getName(), primaryIndex);
+        //printIndex(primaryIndex);
+    }
+
+    private static void printIndex(PrimaryIndex primaryIndex) {
+        IntegerIndex integerIndex = (IntegerIndex) primaryIndex;
+        System.out.println(Arrays.toString(integerIndex.getPrimaryKeys()));
+        System.out.println(Arrays.toString(integerIndex.getPositions()));
     }
 
     private static void loadTableLines() {
         File dir = new File(linesDir);
         File[] files = dir.listFiles();
-        for(File file: files){
+        for (File file : files) {
             try {
                 DataInputStream dataInputStream = new DataInputStream(new FileInputStream(file));
-                Utils.tableToLines.put(file.getName(),dataInputStream.readInt());
+                Utils.tableToLines.put(file.getName(), dataInputStream.readInt());
                 dataInputStream.close();
             } catch (FileNotFoundException e) {
                 e.printStackTrace();

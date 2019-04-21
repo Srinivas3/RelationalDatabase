@@ -26,6 +26,10 @@ public class TableScan implements Operator {
     int linesScanned;
     int totalLines;
 
+
+
+    int bytesReadSoFar;
+
     public TableScan(Table table) {
         this.table = table;
         this.filePath = "data/" + table.getName() + format;
@@ -36,6 +40,10 @@ public class TableScan implements Operator {
         setTableName();
         setSchema();
         init();
+        bytesReadSoFar = 0;
+    }
+    public int getBytesReadSoFar() {
+        return bytesReadSoFar;
     }
 
     private void setSchema() {
@@ -106,19 +114,22 @@ public class TableScan implements Operator {
     }
 
     private PrimitiveValue getPrimitiveValue(String dataType) throws IOException {
-        if (dataType.equals("string") || dataType.equals("char") || dataType.equals("varchar") || dataType.equals("date")) {
+        if (dataType.equalsIgnoreCase("string") || dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("date")) {
             int numBytes = dataInputStream.readInt();
+            bytesReadSoFar += numBytes + 4;
             byte byteArr[] = new byte[numBytes];
             dataInputStream.readFully(byteArr);
             String value = new String(byteArr);
-            if (dataType.equals("date")) {
+            if (dataType.equalsIgnoreCase("date")) {
                 return new DateValue(value);
             } else {
                 return new StringValue(value);
             }
-        } else if (dataType.equals("int")) {
+        } else if (dataType.equalsIgnoreCase("int")) {
+            bytesReadSoFar += 4;
             return new LongValue(dataInputStream.readInt());
-        } else if (dataType.equals("decimal") || dataType.equals("float")) {
+        } else if (dataType.equalsIgnoreCase("decimal") || dataType.equalsIgnoreCase("float")) {
+            bytesReadSoFar += 8;
             return new DoubleValue(dataInputStream.readDouble());
         } else {
             return null;

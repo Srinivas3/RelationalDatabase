@@ -1,6 +1,7 @@
 package utils;
 
 
+import Indexes.PrimaryIndex;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -15,6 +16,7 @@ public class Utils {
     public static boolean inMemoryMode = true;
     public static int diskCacheCnt = 0;
     public static Map<String,Integer> tableToLines = new HashMap<String, Integer>();
+    public static Map<String, PrimaryIndex> colToIndexes  = new HashMap<String,PrimaryIndex>();
 
     public static boolean isSameTable(String table, String col) {
         String[] partsCol = col.split("\\.");
