@@ -27,7 +27,9 @@ public class Main {
     private static String colDefsDir = "colDefsDir";
     private static boolean areDirsCreated = false;
     public static String compressedTablesDir = "compressedTablesDir";
+    public static String linesDir = "lines";
     private static String format = ".csv";
+    private static boolean isFirstSelect = true;
 
     public static void main(String args[]) throws ParseException, FileNotFoundException {
         try {
@@ -52,8 +54,9 @@ public class Main {
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
             while ((statement = parser.Statement()) != null) {
                 if (statement instanceof Select) {
-                    if (!isPhaseOne) {
+                    if (!isPhaseOne && isFirstSelect) {
                         loadSavedState();
+                        isFirstSelect = false;
                     }
                     long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
@@ -61,7 +64,7 @@ public class Main {
                     long endTime = System.currentTimeMillis();
                     execution_times.add(endTime - startTime);
                 } else if (statement instanceof CreateTable) {
-                    CreateTable createTableStatement = (CreateTable)statement;
+                    CreateTable createTableStatement = (CreateTable) statement;
                     isPhaseOne = true;
                     if (!areDirsCreated) {
                         createDirs();
@@ -70,6 +73,7 @@ public class Main {
                     saveTableSchema(createTableStatement);
                     saveColDefsToDisk(createTableStatement);
                     scanTable(createTableStatement);
+                    saveTableToLines(createTableStatement);
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
@@ -89,12 +93,28 @@ public class Main {
         }
     }
 
+    private static void saveTableToLines(CreateTable createTableStatement) {
+        String tableName = createTableStatement.getTable().getName();
+        File file = new File(linesDir, tableName);
+        try {
+            DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(file));
+            dataOutputStream.writeInt(Utils.tableToLines.get(tableName));
+            dataOutputStream.flush();
+            dataOutputStream.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     private static void scanTable(CreateTable createTableStatement) {
         Table table = createTableStatement.getTable();
         String tableName = table.getName();
         File tableFile = new File("data", tableName + format);
         File compressedTableFile = new File(compressedTablesDir, tableName);
         List<ColumnDefinition> colDefs = Utils.nameToColDefs.get(tableName);
+        int numOfLines = 0;
 
         try {
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(compressedTableFile));
@@ -106,8 +126,10 @@ public class Main {
                 for (int i = 0; i < tupleArr.length; i++) {
                     writeBytes(dataOutputStream, tupleArr[i], colDefs.get(i));
                 }
+                numOfLines++;
 
             }
+            Utils.tableToLines.put(tableName, numOfLines);
             bufferedReader.close();
             dataOutputStream.flush();
             dataOutputStream.close();
@@ -161,10 +183,28 @@ public class Main {
     private static void createDirs() {
         new File(colDefsDir).mkdir();
         new File(compressedTablesDir).mkdir();
+        new File(linesDir).mkdir();
     }
 
     private static void loadSavedState() {
         loadSchemas();
+        loadTableLines();
+    }
+
+    private static void loadTableLines() {
+        File dir = new File(linesDir);
+        File[] files = dir.listFiles();
+        for(File file: files){
+            try {
+                DataInputStream dataInputStream = new DataInputStream(new FileInputStream(file));
+                Utils.tableToLines.put(file.getName(),dataInputStream.readInt());
+                dataInputStream.close();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     private static void loadSchemas() {

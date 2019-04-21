@@ -14,6 +14,7 @@ public class Utils {
     public static Map<String, List<ColumnDefinition>> nameToColDefs = new HashMap<String, List<ColumnDefinition>>();
     public static boolean inMemoryMode = true;
     public static int diskCacheCnt = 0;
+    public static Map<String,Integer> tableToLines = new HashMap<String, Integer>();
 
     public static boolean isSameTable(String table, String col) {
         String[] partsCol = col.split("\\.");

@@ -23,13 +23,16 @@ public class TableScan implements Operator {
     Map<String, PrimitiveValue> tuple;
     String tableName;
     Map<String, Integer> schema;
+    int linesScanned;
+    int totalLines;
 
     public TableScan(Table table) {
         this.table = table;
-//        this.filePath = "/Users/srinivasrishindra/Desktop/CourseWork/Spring_2019/Database_Systems/team15/data/"+ table.getName() + format;
         this.filePath = "data/" + table.getName() + format;
         this.colDefs = Utils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();
+        linesScanned = 0;
+        totalLines = Utils.tableToLines.get(table.getName());
         setTableName();
         setSchema();
         init();
@@ -65,8 +68,9 @@ public class TableScan implements Operator {
 
     public Map<String, PrimitiveValue> next() {
         try {
-            if (dataInputStream.available() > 0) {
+            if (linesScanned < totalLines) {
                 readTuple();
+                linesScanned++;
                 return tuple;
             } else {
                 return null;
@@ -94,7 +98,6 @@ public class TableScan implements Operator {
             }
             File compressedTableFile = new File(Main.compressedTablesDir, tableName);
             FileInputStream fileInputStream = new FileInputStream(compressedTableFile);
-            fileInputStream.available();
             BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
             dataInputStream = new DataInputStream(bufferedInputStream);
         } catch (IOException e) {
