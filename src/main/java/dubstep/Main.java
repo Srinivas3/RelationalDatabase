@@ -20,6 +20,7 @@ import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
 import operators.joins.JoinOperator;
+import utils.PrimValComp;
 import utils.Utils;
 
 public class Main {
@@ -30,6 +31,7 @@ public class Main {
     public static String compressedTablesDir = "compressedTablesDir";
     public static String linesDir = "lines";
     public static String primaryIndexDir = "primaryIndicesDir";
+    public static String secondaryIndexDir = "secondaryIndicesDir";
     private static String format = ".csv";
     private static boolean isFirstSelect = true;
     private static IndexFactory indexFactory = new IndexFactory();
@@ -68,6 +70,11 @@ public class Main {
                     execution_times.add(endTime - startTime);
                 } else if (statement instanceof CreateTable) {
                     CreateTable createTableStatement = (CreateTable) statement;
+                    List<Index> indexes = createTableStatement.getIndexes();
+                    for (Index index: indexes){
+                        String tableColName = createTableStatement.getTable().getName() + "." + index.getColumnsNames().get(0);
+                        Utils.colToIndexType.put(tableColName, index.getType());
+                    }
                     isPhaseOne = true;
                     if (!areDirsCreated) {
                         createDirs();
@@ -76,9 +83,12 @@ public class Main {
                     saveTableSchema(createTableStatement);
                     saveColDefsToDisk(createTableStatement);
                     scanTable(createTableStatement);
+                    saveSecondaryIndex(createTableStatement);
                     saveTableToLines(createTableStatement);
                     buildIndexAndSave(createTableStatement);
-//                    printIndex(Utils.colToIndexes.get("R.A"));
+                    //printIndex(Utils.colToPrimIndex.get("R.A"));
+                   // printSecIndex();
+
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
@@ -98,6 +108,76 @@ public class Main {
         }
     }
 
+    private static void printSecIndex() {
+        Set<String> tableColNames = Utils.colToSecIndex.keySet();
+        for(String tableColName: tableColNames){
+            System.out.println(tableColName);
+            TreeMap<PrimitiveValue,List<Integer>> index = Utils.colToSecIndex.get(tableColName);
+            Iterator<PrimitiveValue> iterator = index.keySet().iterator();
+            while(iterator.hasNext()){
+                PrimitiveValue primitiveValue = iterator.next();
+                List<Integer> pos = index.get(primitiveValue);
+                System.out.println(primitiveValue+ " "+ Arrays.toString(pos.toArray()));
+            }
+        }
+    }
+
+    private static void saveSecondaryIndex(CreateTable createTableStatement) {
+        Set<String> tableColNames = Utils.colToIndexType.keySet();
+        for (String tableColName : tableColNames) {
+            if (Utils.isSameTable(createTableStatement.getTable().getName(),tableColName)){
+                if (Utils.colToIndexType.get(tableColName).equalsIgnoreCase("index")) {
+                    writeSecondaryIndexToFile(createTableStatement.getTable(),tableColName);
+                }
+            }
+
+        }
+
+    }
+
+    private static void writeSecondaryIndexToFile(Table table,String tableColName) {
+        File secIndexFile = new File(secondaryIndexDir, tableColName);
+        try {
+            FileOutputStream fileOutputStream = new FileOutputStream(secIndexFile);
+            BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+            DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
+            TreeMap<PrimitiveValue,List<Integer>> secIdx = Utils.colToSecIndex.get(tableColName);
+            Iterator<PrimitiveValue> primValIterator = secIdx.keySet().iterator();
+            while(primValIterator.hasNext()){
+                PrimitiveValue primitiveValue = primValIterator.next();
+                writeBytes(dataOutputStream,primitiveValue);
+                List<Integer> positions = secIdx.get(primitiveValue);
+                dataOutputStream.writeInt(positions.size());
+                for (int position: positions){
+                    dataOutputStream.writeInt(position);
+                }
+            }
+            dataOutputStream.flush();
+            dataOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+    private static void  writeBytes(DataOutputStream dataOutputStream,PrimitiveValue primitiveValue){
+        try {
+            if (primitiveValue instanceof DoubleValue){
+                dataOutputStream.writeDouble(primitiveValue.toDouble());
+            }
+            else if (primitiveValue instanceof  LongValue){
+                dataOutputStream.writeInt((int)primitiveValue.toLong());
+            }
+            else{
+                String primValInString = primitiveValue.toRawString();
+                dataOutputStream.writeInt(primValInString.length());
+                dataOutputStream.writeBytes(primValInString);
+            }
+        }
+        catch(Exception e){
+
+        }
+    }
+
     private static void buildIndexAndSave(CreateTable createTableStatement) {
         Table table = createTableStatement.getTable();
         List<Index> indexes = createTableStatement.getIndexes();
@@ -109,7 +189,7 @@ public class Main {
                 String colName = index.getColumnsNames().get(0);
                 PrimaryIndex primaryIndex = indexFactory.getIndex(table, colName);
                 String keyFileName = table.getName() + "." + colName;
-                Utils.colToIndexes.put(keyFileName, primaryIndex);
+                Utils.colToPrimIndex.put(keyFileName, primaryIndex);
                 writeIndexToFile(keyFileName, primaryIndex);
             }
         }
@@ -157,6 +237,8 @@ public class Main {
         int numOfLines = 0;
 
         try {
+            int bytesWrittenSoFar = 0;
+            int tupleBytesWrittenSoFar = 0;
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(new FileOutputStream(compressedTableFile));
             DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
             BufferedReader bufferedReader = new BufferedReader(new FileReader(tableFile));
@@ -164,8 +246,16 @@ public class Main {
             while ((line = bufferedReader.readLine()) != null) {
                 String tupleArr[] = line.split("\\|");
                 for (int i = 0; i < tupleArr.length; i++) {
-                    writeBytes(dataOutputStream, tupleArr[i], colDefs.get(i));
+                    ColumnDefinition colDef = colDefs.get(i);
+                    String tableColName = tableName + "." + colDef.getColumnName();
+                    String indexType = Utils.colToIndexType.get(tableColName);
+                    if (indexType != null && indexType.equalsIgnoreCase("index")){
+                        insertFilePosition(colDef,tableColName,tupleArr[i],bytesWrittenSoFar);
+                    }
+                    tupleBytesWrittenSoFar += writeBytes(dataOutputStream, tupleArr[i], colDef);
                 }
+                bytesWrittenSoFar += tupleBytesWrittenSoFar;
+                tupleBytesWrittenSoFar = 0;
                 numOfLines++;
 
             }
@@ -180,16 +270,35 @@ public class Main {
         }
     }
 
-    private static void writeBytes(DataOutputStream dataOutputStream, String colInString, ColumnDefinition columnDefinition) {
+    private static void insertFilePosition(ColumnDefinition colDef,String tableColName, String primValInString, int filePosition) {
+        PrimitiveValue primitiveValue = Utils.getPrimitiveValue(colDef.getColDataType().getDataType(),primValInString);
+        TreeMap<PrimitiveValue,List<Integer>> secIndex =  Utils.colToSecIndex.get(tableColName);
+        if(secIndex == null){
+            secIndex = new TreeMap<PrimitiveValue, List<Integer>>(new PrimValComp());
+            Utils.colToSecIndex.put(tableColName,secIndex);
+        }
+        List<Integer> filePositions = secIndex.get(primitiveValue);
+        if (filePositions == null){
+            filePositions = new ArrayList<Integer>();
+            secIndex.put(primitiveValue,filePositions);
+        }
+        filePositions.add(filePosition);
+    }
+
+
+    private static int writeBytes(DataOutputStream dataOutputStream, String colInString, ColumnDefinition columnDefinition) {
         String dataType = columnDefinition.getColDataType().getDataType().toLowerCase();
         try {
             if (dataType.equalsIgnoreCase("string") || dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("date")) {
                 dataOutputStream.writeInt(colInString.length());
                 dataOutputStream.write(colInString.getBytes());
+                return 4 + colInString.length();
             } else if (dataType.equalsIgnoreCase("int")) {
                 dataOutputStream.writeInt(Integer.valueOf(colInString));
+                return 4;
             } else if (dataType.equalsIgnoreCase("decimal") || dataType.equalsIgnoreCase("float")) {
                 dataOutputStream.writeDouble(Double.valueOf(colInString));
+                return 8;
             } else {
                 throw new Exception("invalid data type " + dataType);
             }
@@ -197,6 +306,7 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        return 0;
     }
 
 
@@ -225,6 +335,7 @@ public class Main {
         new File(compressedTablesDir).mkdir();
         new File(linesDir).mkdir();
         new File(primaryIndexDir).mkdir();
+        new File(secondaryIndexDir).mkdir();
     }
 
     private static void loadSavedState() {
@@ -243,7 +354,7 @@ public class Main {
 
     private static void loadIndex(File indexFile) {
         PrimaryIndex primaryIndex = indexFactory.getIndex(indexFile);
-        Utils.colToIndexes.put(indexFile.getName(), primaryIndex);
+        Utils.colToPrimIndex.put(indexFile.getName(), primaryIndex);
         //printIndex(primaryIndex);
     }
 
@@ -275,7 +386,6 @@ public class Main {
         for (File colDefsFile : colDefFiles) {
             saveTableSchema(colDefsFile);
         }
-
     }
 
     private static void saveTableSchema(File colDefsFile) {
@@ -327,6 +437,7 @@ public class Main {
                 sb.append(tuple.get(key).toRawString());
                 if (i < keySet.size() - 1)
                     sb.append("|");
+
                 i += 1;
             }
             //bufferedWriter.write(counter);

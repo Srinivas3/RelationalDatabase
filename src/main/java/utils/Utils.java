@@ -15,8 +15,12 @@ public class Utils {
     public static Map<String, List<ColumnDefinition>> nameToColDefs = new HashMap<String, List<ColumnDefinition>>();
     public static boolean inMemoryMode = true;
     public static int diskCacheCnt = 0;
-    public static Map<String,Integer> tableToLines = new HashMap<String, Integer>();
-    public static Map<String, PrimaryIndex> colToIndexes  = new HashMap<String,PrimaryIndex>();
+    public static Map<String, Integer> tableToLines = new HashMap<String, Integer>();
+    public static Map<String, PrimaryIndex> colToPrimIndex = new HashMap<String, PrimaryIndex>();
+    public static Map<String, TreeMap<PrimitiveValue, List<Integer>>> colToSecIndex =
+            new HashMap<String, TreeMap<PrimitiveValue, List<Integer>>>();
+
+    public static Map<String, String> colToIndexType = new HashMap<String, String>();
 
     public static boolean isSameTable(String table, String col) {
         String[] partsCol = col.split("\\.");
@@ -25,11 +29,26 @@ public class Utils {
         }
         return false;
     }
-    public static Map<Integer,String> getIdxToCol(Map<String,Integer> colToIdx ){
+
+    public static PrimitiveValue getPrimitiveValue(String dataType, String primValInString) {
+        if (dataType.equalsIgnoreCase("string") || dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("varchar")) {
+            return new StringValue(primValInString);
+        } else if (dataType.equalsIgnoreCase("date")) {
+            return new DateValue(primValInString);
+        } else if (dataType.equalsIgnoreCase("int")) {
+            return new LongValue(primValInString);
+        } else if (dataType.equalsIgnoreCase("decimal") || dataType.equalsIgnoreCase("float")) {
+            return new DoubleValue(primValInString);
+        } else {
+            return null;
+        }
+    }
+
+    public static Map<Integer, String> getIdxToCol(Map<String, Integer> colToIdx) {
         Set<String> colSet = colToIdx.keySet();
-        Map<Integer,String> idxToCol = new HashMap<Integer, String>();
-        for(String col:colSet){
-            idxToCol.put(colToIdx.get(col),col);
+        Map<Integer, String> idxToCol = new HashMap<Integer, String>();
+        for (String col : colSet) {
+            idxToCol.put(colToIdx.get(col), col);
         }
         return idxToCol;
     }
@@ -46,23 +65,23 @@ public class Utils {
         return col1.equals(col2);
 
     }
-    public static String getColName(String colKey){
+
+    public static String getColName(String colKey) {
         String[] parts = colKey.split("\\.");
-        if (parts.length == 1){
+        if (parts.length == 1) {
             return parts[0];
-        }
-        else{
+        } else {
             return parts[1];
         }
 
     }
-    public static Column getColumn(String colName){
+
+    public static Column getColumn(String colName) {
         Column column = new Column();
         String[] parts = colName.split("\\.");
-        if (parts.length == 1){
-           column.setColumnName(parts[0]);
-        }
-        else{
+        if (parts.length == 1) {
+            column.setColumnName(parts[0]);
+        } else {
             column.setTable(new Table(parts[0]));
             column.setColumnName(parts[1]);
         }
@@ -79,7 +98,7 @@ public class Utils {
             for (String key : tuple.keySet()) {
                 String parts[] = key.split("\\.");
                 String keyCol = null;
-                if (parts.length == 2){
+                if (parts.length == 2) {
                     keyCol = parts[1];
                 } else {
                     keyCol = parts[0];
