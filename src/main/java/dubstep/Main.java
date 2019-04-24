@@ -126,7 +126,7 @@ public class Main {
         Set<String> tableColNames = Utils.colToIndexType.keySet();
         for (String tableColName : tableColNames) {
             if (Utils.isSameTable(createTableStatement.getTable().getName(),tableColName)){
-                if (Utils.colToIndexType.get(tableColName).equalsIgnoreCase("index")) {
+                if (Utils.colToIndexType.get(tableColName).equalsIgnoreCase("index") && !tableColName.toLowerCase().contains("lineitem")) {
                     writeSecondaryIndexToFile(createTableStatement.getTable(),tableColName);
                 }
             }
@@ -154,6 +154,8 @@ public class Main {
             }
             dataOutputStream.flush();
             dataOutputStream.close();
+            secIdx.clear();
+            Utils.colToSecIndex.remove(tableColName);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -249,7 +251,7 @@ public class Main {
                     ColumnDefinition colDef = colDefs.get(i);
                     String tableColName = tableName + "." + colDef.getColumnName();
                     String indexType = Utils.colToIndexType.get(tableColName);
-                    if (indexType != null && indexType.equalsIgnoreCase("index")){
+                    if (!tableName.equalsIgnoreCase("LINEITEM") && indexType != null && indexType.equalsIgnoreCase("index")){
                         insertFilePosition(colDef,tableColName,tupleArr[i],bytesWrittenSoFar);
                     }
                     tupleBytesWrittenSoFar += writeBytes(dataOutputStream, tupleArr[i], colDef);
