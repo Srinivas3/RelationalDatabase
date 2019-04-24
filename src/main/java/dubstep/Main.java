@@ -71,14 +71,16 @@ public class Main {
                 } else if (statement instanceof CreateTable) {
                     CreateTable createTableStatement = (CreateTable) statement;
                     List<Index> indexes = createTableStatement.getIndexes();
-                    for (Index index: indexes){
+                    for (Index index : indexes) {
                         String tableColName = createTableStatement.getTable().getName() + "." + index.getColumnsNames().get(0);
-                        if (createTableStatement.getTable().getName().equalsIgnoreCase("lineitem")){
-                            if (index.getType().equalsIgnoreCase("PRIMARY KEY")){
+                        if (createTableStatement.getTable().getName().equalsIgnoreCase("lineitem")) {
+                            if (index.getType().equalsIgnoreCase("PRIMARY KEY")) {
                                 Utils.colToIndexType.put(tableColName, index.getType());
                             }
+                        } else {
+                            Utils.colToIndexType.put(tableColName, index.getType());
                         }
-                        Utils.colToIndexType.put(tableColName, index.getType());
+                        
                     }
                     isPhaseOne = true;
                     if (!areDirsCreated) {
@@ -92,7 +94,7 @@ public class Main {
                     saveTableToLines(createTableStatement);
                     buildIndexAndSave(createTableStatement);
                     //printIndex(Utils.colToPrimIndex.get("R.A"));
-                   // printSecIndex();
+                    // printSecIndex();
 
                 } else {
                     bufferedWriter.write("Invalid Query");
@@ -115,14 +117,14 @@ public class Main {
 
     private static void printSecIndex() {
         Set<String> tableColNames = Utils.colToSecIndex.keySet();
-        for(String tableColName: tableColNames){
+        for (String tableColName : tableColNames) {
             System.out.println(tableColName);
-            TreeMap<PrimitiveValue,List<Integer>> index = Utils.colToSecIndex.get(tableColName);
+            TreeMap<PrimitiveValue, List<Integer>> index = Utils.colToSecIndex.get(tableColName);
             Iterator<PrimitiveValue> iterator = index.keySet().iterator();
-            while(iterator.hasNext()){
+            while (iterator.hasNext()) {
                 PrimitiveValue primitiveValue = iterator.next();
                 List<Integer> pos = index.get(primitiveValue);
-                System.out.println(primitiveValue+ " "+ Arrays.toString(pos.toArray()));
+                System.out.println(primitiveValue + " " + Arrays.toString(pos.toArray()));
             }
         }
     }
@@ -130,9 +132,9 @@ public class Main {
     private static void saveSecondaryIndex(CreateTable createTableStatement) {
         Set<String> tableColNames = Utils.colToIndexType.keySet();
         for (String tableColName : tableColNames) {
-            if (Utils.isSameTable(createTableStatement.getTable().getName(),tableColName)){
+            if (Utils.isSameTable(createTableStatement.getTable().getName(), tableColName)) {
                 if (Utils.colToIndexType.get(tableColName).equalsIgnoreCase("index")) {
-                    writeSecondaryIndexToFile(createTableStatement.getTable(),tableColName);
+                    writeSecondaryIndexToFile(createTableStatement.getTable(), tableColName);
                 }
             }
 
@@ -140,20 +142,20 @@ public class Main {
 
     }
 
-    private static void writeSecondaryIndexToFile(Table table,String tableColName) {
+    private static void writeSecondaryIndexToFile(Table table, String tableColName) {
         File secIndexFile = new File(secondaryIndexDir, tableColName);
         try {
             FileOutputStream fileOutputStream = new FileOutputStream(secIndexFile);
             BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
             DataOutputStream dataOutputStream = new DataOutputStream(bufferedOutputStream);
-            TreeMap<PrimitiveValue,List<Integer>> secIdx = Utils.colToSecIndex.get(tableColName);
+            TreeMap<PrimitiveValue, List<Integer>> secIdx = Utils.colToSecIndex.get(tableColName);
             Iterator<PrimitiveValue> primValIterator = secIdx.keySet().iterator();
-            while(primValIterator.hasNext()){
+            while (primValIterator.hasNext()) {
                 PrimitiveValue primitiveValue = primValIterator.next();
-                writeBytes(dataOutputStream,primitiveValue);
+                writeBytes(dataOutputStream, primitiveValue);
                 List<Integer> positions = secIdx.get(primitiveValue);
                 dataOutputStream.writeInt(positions.size());
-                for (int position: positions){
+                for (int position : positions) {
                     dataOutputStream.writeInt(position);
                 }
             }
@@ -166,21 +168,19 @@ public class Main {
         }
 
     }
-    private static void  writeBytes(DataOutputStream dataOutputStream,PrimitiveValue primitiveValue){
+
+    private static void writeBytes(DataOutputStream dataOutputStream, PrimitiveValue primitiveValue) {
         try {
-            if (primitiveValue instanceof DoubleValue){
+            if (primitiveValue instanceof DoubleValue) {
                 dataOutputStream.writeDouble(primitiveValue.toDouble());
-            }
-            else if (primitiveValue instanceof  LongValue){
-                dataOutputStream.writeInt((int)primitiveValue.toLong());
-            }
-            else{
+            } else if (primitiveValue instanceof LongValue) {
+                dataOutputStream.writeInt((int) primitiveValue.toLong());
+            } else {
                 String primValInString = primitiveValue.toRawString();
                 dataOutputStream.writeInt(primValInString.length());
                 dataOutputStream.writeBytes(primValInString);
             }
-        }
-        catch(Exception e){
+        } catch (Exception e) {
 
         }
     }
@@ -256,8 +256,8 @@ public class Main {
                     ColumnDefinition colDef = colDefs.get(i);
                     String tableColName = tableName + "." + colDef.getColumnName();
                     String indexType = Utils.colToIndexType.get(tableColName);
-                    if (!tableName.equalsIgnoreCase("lineitem") && indexType != null && indexType.equalsIgnoreCase("index")){
-                        insertFilePosition(colDef,tableColName,tupleArr[i],bytesWrittenSoFar);
+                    if (!tableName.equalsIgnoreCase("lineitem") && indexType != null && indexType.equalsIgnoreCase("index")) {
+                        insertFilePosition(colDef, tableColName, tupleArr[i], bytesWrittenSoFar);
                     }
                     tupleBytesWrittenSoFar += writeBytes(dataOutputStream, tupleArr[i], colDef);
                 }
@@ -277,17 +277,17 @@ public class Main {
         }
     }
 
-    private static void insertFilePosition(ColumnDefinition colDef,String tableColName, String primValInString, int filePosition) {
-        PrimitiveValue primitiveValue = Utils.getPrimitiveValue(colDef.getColDataType().getDataType(),primValInString);
-        TreeMap<PrimitiveValue,List<Integer>> secIndex =  Utils.colToSecIndex.get(tableColName);
-        if(secIndex == null){
+    private static void insertFilePosition(ColumnDefinition colDef, String tableColName, String primValInString, int filePosition) {
+        PrimitiveValue primitiveValue = Utils.getPrimitiveValue(colDef.getColDataType().getDataType(), primValInString);
+        TreeMap<PrimitiveValue, List<Integer>> secIndex = Utils.colToSecIndex.get(tableColName);
+        if (secIndex == null) {
             secIndex = new TreeMap<PrimitiveValue, List<Integer>>(new PrimValComp());
-            Utils.colToSecIndex.put(tableColName,secIndex);
+            Utils.colToSecIndex.put(tableColName, secIndex);
         }
         List<Integer> filePositions = secIndex.get(primitiveValue);
-        if (filePositions == null){
+        if (filePositions == null) {
             filePositions = new ArrayList<Integer>();
-            secIndex.put(primitiveValue,filePositions);
+            secIndex.put(primitiveValue, filePositions);
         }
         filePositions.add(filePosition);
     }
