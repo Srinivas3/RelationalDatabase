@@ -80,7 +80,7 @@ public class Main {
                         } else {
                             Utils.colToIndexType.put(tableColName, index.getType());
                         }
-                        
+
                     }
                     isPhaseOne = true;
                     if (!areDirsCreated) {
@@ -112,6 +112,20 @@ public class Main {
             bufferedWriter.close();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private static void debugCode() {
+        TreeMap<PrimitiveValue,Integer> treeMap = new TreeMap<PrimitiveValue, Integer>(new PrimValComp());
+        PrimitiveValue primitiveValue1 = new StringValue("vihari");
+        PrimitiveValue primitiveValue2 = new StringValue("harsha");
+        treeMap.put(primitiveValue1,1);
+        treeMap.put(primitiveValue2,2);
+        PrimValComp primValComp = new PrimValComp();
+        Set<PrimitiveValue> keySet = treeMap.keySet();
+        for(PrimitiveValue primitiveValue: keySet){
+            System.out.println(primitiveValue.toRawString());
+            System.out.println(treeMap.get(primitiveValue));
         }
     }
 
