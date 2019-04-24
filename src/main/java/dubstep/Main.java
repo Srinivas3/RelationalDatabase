@@ -73,6 +73,11 @@ public class Main {
                     List<Index> indexes = createTableStatement.getIndexes();
                     for (Index index: indexes){
                         String tableColName = createTableStatement.getTable().getName() + "." + index.getColumnsNames().get(0);
+                        if (createTableStatement.getTable().getName().equalsIgnoreCase("lineitem")){
+                            if (index.getType().equalsIgnoreCase("PRIMARY KEY")){
+                                Utils.colToIndexType.put(tableColName, index.getType());
+                            }
+                        }
                         Utils.colToIndexType.put(tableColName, index.getType());
                     }
                     isPhaseOne = true;
@@ -126,7 +131,7 @@ public class Main {
         Set<String> tableColNames = Utils.colToIndexType.keySet();
         for (String tableColName : tableColNames) {
             if (Utils.isSameTable(createTableStatement.getTable().getName(),tableColName)){
-                if (Utils.colToIndexType.get(tableColName).equalsIgnoreCase("index") && !tableColName.toLowerCase().contains("lineitem")) {
+                if (Utils.colToIndexType.get(tableColName).equalsIgnoreCase("index")) {
                     writeSecondaryIndexToFile(createTableStatement.getTable(),tableColName);
                 }
             }
@@ -251,7 +256,7 @@ public class Main {
                     ColumnDefinition colDef = colDefs.get(i);
                     String tableColName = tableName + "." + colDef.getColumnName();
                     String indexType = Utils.colToIndexType.get(tableColName);
-                    if (!tableName.equalsIgnoreCase("LINEITEM") && indexType != null && indexType.equalsIgnoreCase("index")){
+                    if (!tableName.equalsIgnoreCase("lineitem") && indexType != null && indexType.equalsIgnoreCase("index")){
                         insertFilePosition(colDef,tableColName,tupleArr[i],bytesWrittenSoFar);
                     }
                     tupleBytesWrittenSoFar += writeBytes(dataOutputStream, tupleArr[i], colDef);
