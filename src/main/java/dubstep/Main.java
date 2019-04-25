@@ -47,8 +47,8 @@ public class Main {
             List<Statement> statements = new ArrayList<Statement>();
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
             while ((statement = parser.Statement()) != null) {
-                statements.add(statement);
                 if (statement instanceof Select) {
+                    statements.add(statement);
                     if (!isPhaseOne && isFirstSelect) {
                         PreComputeLoader preComputeLoader = new PreComputeLoader();
                         preComputeLoader.loadSavedState();
@@ -74,7 +74,7 @@ public class Main {
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
-                if(statements.size()> 20){
+                if(statements.size()> 13){
                     for(Statement query : statements){
                         bufferedWriter.write(query.toString());
                         bufferedWriter.newLine();
