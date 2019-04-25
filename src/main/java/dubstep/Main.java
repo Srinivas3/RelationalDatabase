@@ -74,7 +74,7 @@ public class Main {
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
-                if(statements.size()==20){
+                if(statements.size()> 20){
                     for(Statement query : statements){
                         bufferedWriter.write(query.toString());
                         bufferedWriter.newLine();
