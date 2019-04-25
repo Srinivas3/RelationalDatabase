@@ -12,11 +12,22 @@ import java.io.IOException;
 import java.util.*;
 
 public class IntegerIndex extends PrimaryIndex {
-    public int[] getPrimaryKeys() {
-        return primaryKeys;
-    }
 
     private int primaryKeys[];
+
+    public int getPosition(PrimitiveValue primitiveValue) {
+        try {
+            int key = (int) primitiveValue.toLong();
+            int position = Arrays.binarySearch(primaryKeys,key);
+            if(position<0) {
+                position = (position * -1) - 1;
+            }
+            return position;
+        } catch (PrimitiveValue.InvalidPrimitive throwables) {
+            throwables.printStackTrace();
+        }
+        return -1;
+    }
 
 
     public IntegerIndex(Table table, String colName) {

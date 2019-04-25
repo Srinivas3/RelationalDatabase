@@ -1,16 +1,17 @@
 package optimizer;
 
+import Indexes.PrimaryIndex;
 import net.sf.jsqlparser.eval.Eval;
-import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.Function;
-import net.sf.jsqlparser.expression.LongValue;
-import net.sf.jsqlparser.expression.PrimitiveValue;
+import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
+import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
+import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
 import operators.*;
+import operators.joins.IndexScanOperator;
 import operators.joins.JoinOperator;
 import utils.Utils;
 
@@ -38,8 +39,71 @@ public class QueryOptimizer extends Eval {
         if (child instanceof JoinOperator){
             return pushDown(selectionOperator,(JoinOperator)child);
         }
+        else if (child instanceof TableScan ){
+            return getIndexScan(selectionOperator,(TableScan) child);
+        }
         else{
             return selectionOperator;
+        }
+
+    }
+
+    private Operator getIndexScan(SelectionOperator selectionOperator, TableScan tableScanChild){
+        List<Expression> selectAndExpressions = new ArrayList<Expression>();
+        Expression indexScanExpression = null;
+        populateAndExpressions(selectionOperator.getWhereExp(),selectAndExpressions);
+        PrimaryIndex primaryIndex=null;
+        PrimitiveValue primitiveValue=null;
+        String conType="";
+        Expression filterCondition=null;
+        for (Expression expression : selectAndExpressions) {
+            conType = getConType(expression);
+            if (conType != null) {
+                BinaryExpression binaryExpression = (BinaryExpression) expression;
+                Expression leftExpression = binaryExpression.getLeftExpression();
+                Expression rightExpression = binaryExpression.getRightExpression();
+                if (leftExpression instanceof Column && rightExpression instanceof PrimitiveValue) {
+                    String tableColName = getTableColName((Column)leftExpression,tableScanChild.getTableName());
+                    if ((primaryIndex = Utils.colToPrimIndex.get(tableColName)) != null) {
+                        indexScanExpression = expression;
+                        primitiveValue = Utils.getPrimitiveValue(rightExpression);
+                        break;
+                    }
+                }
+            }
+        }
+        if(indexScanExpression!=null){
+            filterCondition = getFilteredCondition(selectAndExpressions,indexScanExpression);
+            return new IndexScanOperator(conType,primitiveValue,filterCondition,primaryIndex);
+        }
+        return selectionOperator;
+    }
+
+    private String getTableColName(Column column,String tableName) {
+        String colName = Utils.getColName(column.getColumnName());
+        return tableName+ "." + colName;
+    }
+
+    private String getConType(Expression expression) {
+        if(expression instanceof GreaterThanEquals){
+            return "GreaterEqualsTo";
+        }else if(expression instanceof EqualsTo){
+            return "EqualsTo";
+        }else if(expression instanceof GreaterThan){
+            return "GreaterThan";
+        }
+        else{
+            return null;
+        }
+    }
+
+
+    private Expression getFilteredCondition(List<Expression> selectAndExpressions, Expression removeExpression) {
+        selectAndExpressions.remove(removeExpression);
+        if(selectAndExpressions.size()>0){
+            return constructByAdding(selectAndExpressions);
+        }else {
+            return null;
         }
 
     }

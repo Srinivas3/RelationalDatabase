@@ -10,14 +10,18 @@ import java.util.List;
 import java.util.Map;
 
 public abstract class PrimaryIndex {
-    public int[] getPositions() {
-        return positions;
-    }
+    public abstract int getPosition(PrimitiveValue primitiveValue);
+
+
 
     protected int positions[];
     protected int numOfLines;
     protected Table table;
     protected String colName;
+
+    public  int[] getPositions(){
+        return positions;
+    }
 
     public PrimaryIndex(Table table, String colName) {
         this.table = table;
@@ -34,6 +38,14 @@ public abstract class PrimaryIndex {
             PrimitiveValue primaryKeyPrimVal = Utils.getColValue(table.getName(), colName, tuple);
             insertInPrimaryKeys(i, primaryKeyPrimVal);
         }
+    }
+
+    public String getColName() {
+        return colName;
+    }
+
+    public Table getTable() {
+        return table;
     }
 
     protected abstract void insertInPrimaryKeys(int position, PrimitiveValue primaryKeyPrimVal);

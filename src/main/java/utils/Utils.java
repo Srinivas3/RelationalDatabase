@@ -44,6 +44,21 @@ public class Utils {
         }
     }
 
+    public static PrimitiveValue getPrimitiveValue(Expression expression){
+        if(expression instanceof StringValue){
+            return (StringValue)expression;
+        }else if(expression instanceof DoubleValue){
+            return (DoubleValue)expression;
+        }else if(expression instanceof LongValue){
+            return (LongValue) expression;
+        }else if(expression instanceof DateValue){
+            return (DateValue) expression;
+        }
+        else {
+            return null;
+        }
+    }
+
     public static Map<Integer, String> getIdxToCol(Map<String, Integer> colToIdx) {
         Set<String> colSet = colToIdx.keySet();
         Map<Integer, String> idxToCol = new HashMap<Integer, String>();

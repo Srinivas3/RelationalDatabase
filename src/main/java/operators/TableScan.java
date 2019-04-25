@@ -47,6 +47,22 @@ public class TableScan implements Operator {
         return bytesReadSoFar;
     }
 
+    public void setTotalLines(int totalLines) {
+        this.totalLines = totalLines;
+    }
+
+    public Table getTable() {
+        return table;
+    }
+
+    public DataInputStream getDataInputStream() {
+        return dataInputStream;
+    }
+
+    public void setDataInputStream(DataInputStream dataInputStream) {
+        this.dataInputStream = dataInputStream;
+    }
+
     private void setSchema() {
         schema = new LinkedHashMap<String, Integer>();
         int colCounter = 0;

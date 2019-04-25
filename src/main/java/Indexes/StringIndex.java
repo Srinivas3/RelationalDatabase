@@ -6,9 +6,21 @@ import net.sf.jsqlparser.schema.Table;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class StringIndex extends PrimaryIndex {
     private String primaryKeys[];
+
+    public int getPosition(PrimitiveValue primitiveValue) {
+
+            String key = primitiveValue.toString();
+            int position = Arrays.binarySearch(primaryKeys,key);
+            if(position<0) {
+                position = (position * -1) - 1;
+            }
+            return position;
+
+    }
 
     public StringIndex(Table table, String colName) {
         super(table, colName);

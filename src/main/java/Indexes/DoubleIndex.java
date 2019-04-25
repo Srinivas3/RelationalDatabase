@@ -6,10 +6,25 @@ import net.sf.jsqlparser.schema.Table;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class DoubleIndex extends PrimaryIndex {
     private double primaryKeys[];
 
+
+    public int getPosition(PrimitiveValue primitiveValue) {
+        try {
+            double key = primitiveValue.toDouble();
+            int position = Arrays.binarySearch(primaryKeys,key);
+            if(position<0) {
+                position = (position * -1) - 1;
+            }
+            return position;
+        } catch (PrimitiveValue.InvalidPrimitive throwables) {
+            throwables.printStackTrace();
+        }
+        return -1;
+    }
 
     public DoubleIndex(Table table, String colName) {
         super(table,colName);
