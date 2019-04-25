@@ -4,6 +4,7 @@ package operators;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
+import utils.Constants;
 import utils.Utils;
 
 import java.util.LinkedHashMap;
@@ -104,7 +105,7 @@ public class TableScan implements Operator {
             if (dataInputStream != null) {
                 dataInputStream.close();
             }
-            File compressedTableFile = new File(Main.compressedTablesDir, tableName);
+            File compressedTableFile = new File(Constants.COMPRESSED_TABLES_DIR, tableName);
             FileInputStream fileInputStream = new FileInputStream(compressedTableFile);
             BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
             dataInputStream = new DataInputStream(bufferedInputStream);
