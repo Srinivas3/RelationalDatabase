@@ -54,11 +54,11 @@ public class Main {
                         preComputeLoader.loadSavedState();
                         isFirstSelect = false;
                     }
-                    long startTime = System.currentTimeMillis();
+                    //long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     displayOutput(root, bufferedWriter);
-                    long endTime = System.currentTimeMillis();
-                    execution_times.add(endTime - startTime);
+                    //long endTime = System.currentTimeMillis();
+                    //execution_times.add(endTime - startTime);
                 } else if (statement instanceof CreateTable) {
                     if (!areDirsCreated) {
                         createDirs();
@@ -74,7 +74,7 @@ public class Main {
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
-                if(statements.size()> 13){
+                if(statements.size()> 14){
                     for(Statement query : statements){
                         bufferedWriter.write(query.toString());
                         bufferedWriter.newLine();
