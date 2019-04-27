@@ -18,7 +18,25 @@ public class PreComputeLoader {
     public void loadSavedState() {
         loadSchemas();
         loadTableLines();
-        loadIndexes();
+        loadColToByteCnt();
+        //loadIndexes();
+    }
+
+    private void loadColToByteCnt() {
+        File dir = new File(Constants.COLUMN_BYTES_DIR);
+        File[] files = dir.listFiles();
+        for(File file: files){
+            try{
+                FileInputStream fileInputStream = new FileInputStream(file);
+                DataInputStream dataInputStream = new DataInputStream(fileInputStream);
+                Long byteCnt = dataInputStream.readLong();
+                Utils.colToByteCnt.put(file.getName(),byteCnt);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+
+        }
     }
 
     private void loadTableLines() {
@@ -40,7 +58,6 @@ public class PreComputeLoader {
     private void loadIndex(File indexFile) {
         PrimaryIndex primaryIndex = indexFactory.getIndex(indexFile);
         Utils.colToPrimIndex.put(indexFile.getName(), primaryIndex);
-        //printIndex(primaryIndex);
     }
 
     private void loadIndexes() {
@@ -71,6 +88,8 @@ public class PreComputeLoader {
                 ColDataType colDataType = new ColDataType();
                 colDataType.setDataType(parts[1]);
                 columnDefinition.setColDataType(colDataType);
+                String tableColName = colDefsFile.getName() + "." + columnDefinition.getColumnName();
+                Utils.colToColDef.put(tableColName,columnDefinition);
                 columnDefinitions.add(columnDefinition);
             }
             Utils.nameToColDefs.put(colDefsFile.getName(), columnDefinitions);

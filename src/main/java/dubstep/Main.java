@@ -13,6 +13,7 @@ import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
 import operators.joins.JoinOperator;
+import optimizer.QueryOptimizer;
 import preCompute.PreComputeLoader;
 import preCompute.PreProcessor;
 import utils.Constants;
@@ -54,8 +55,11 @@ public class Main {
                         preComputeLoader.loadSavedState();
                         isFirstSelect = false;
                     }
+                    printCacheState(bufferedWriter);
                     //long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
+                    QueryOptimizer queryOptimizer = new QueryOptimizer();
+                    queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
                     //long endTime = System.currentTimeMillis();
                     //execution_times.add(endTime - startTime);
@@ -68,9 +72,6 @@ public class Main {
                     PreProcessor preProcessor = new PreProcessor(createTableStatement);
                     preProcessor.preCompute();
                     isPhaseOne = true;
-//                    printIndex(Utils.colToPrimIndex.get("R.A"));
-//                    printSecIndex();
-
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
@@ -94,6 +95,17 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void printCacheState(BufferedWriter bufferedWriter) throws Exception {
+        bufferedWriter.write("Start printing cache state");
+        bufferedWriter.newLine();
+        for (String tableColName: Utils.cachedCols.keySet()){
+            bufferedWriter.write(tableColName + " number of bytes " + Utils.cachedCols.get(tableColName).length);
+            bufferedWriter.newLine();
+        }
+        bufferedWriter.write("finished cache state");
+        bufferedWriter.newLine();
     }
 
     private static void createDirs() {
@@ -149,7 +161,7 @@ public class Main {
     }
 
     public static void displayOutput(Operator operator, BufferedWriter bufferedWriter) throws Exception {
-        //printOperatorTree(operator,bufferedWriter);
+        printOperatorTree(operator,bufferedWriter);
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
@@ -170,13 +182,14 @@ public class Main {
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
+        //long time2 = System.currentTimeMillis();
+        //bufferedWriter.write(time2-time1);
+
         bufferedWriter.flush();
 
     }
 
 
-    //long time2 = System.currentTimeMillis();
-    //bufferedWriter.write(time2-time1);
 
 
     public static void printSchema(Map<String, Integer> schema, BufferedWriter bufferedWriter) throws Exception {
@@ -198,6 +211,7 @@ public class Main {
         if (operator instanceof SelectionOperator) {
             SelectionOperator selectionOperator = (SelectionOperator) operator;
             bufferedWriter.write("Selection Operator, where condition: " + selectionOperator.getWhereExp().toString());
+            bufferedWriter.newLine();
             printOperatorTree(selectionOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof JoinOperator) {
@@ -224,6 +238,13 @@ public class Main {
             bufferedWriter.write("TableScan Operator on table " + tableScan.getTableName());
             bufferedWriter.newLine();
         }
+        if (operator instanceof ProjectedTableScan){
+            ProjectedTableScan projectedTableScan = (ProjectedTableScan)operator;
+            bufferedWriter.write("Projected table scan operator on table" + projectedTableScan.getTableName());
+            bufferedWriter.newLine();
+            printSchema(projectedTableScan.getSchema(),bufferedWriter);
+            bufferedWriter.newLine();
+        }
         if (operator instanceof InMemoryCacheOperator) {
             InMemoryCacheOperator memoryCacheOperator = (InMemoryCacheOperator) operator;
             bufferedWriter.write("InMemoryCacheOperator");
@@ -235,6 +256,20 @@ public class Main {
             bufferedWriter.write("OnDiskCacheOperator");
             bufferedWriter.newLine();
             printOperatorTree(diskCacheOperator.getChild(), bufferedWriter);
+        }
+        if (operator instanceof GroupByOperator){
+            GroupByOperator groupByOperator = (GroupByOperator) operator;
+            bufferedWriter.write("group by operator with schema:");
+            bufferedWriter.newLine();
+            printSchema(groupByOperator.getSchema(),bufferedWriter);
+            bufferedWriter.newLine();
+            printOperatorTree(((GroupByOperator) operator).getChild(),bufferedWriter);
+        }
+        if (operator instanceof  OrderByOperator){
+            OrderByOperator orderByOperator = (OrderByOperator)operator;
+            bufferedWriter.write("orderby operator");
+            bufferedWriter.newLine();
+            printOperatorTree(orderByOperator.getChild(),bufferedWriter);
         }
 
     }

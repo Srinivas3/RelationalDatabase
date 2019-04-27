@@ -65,6 +65,8 @@ public class PreProcessor {
                 String colDataType = colDef.getColDataType().getDataType();
                 bufferedWriter.write(colName + "," + colDataType);
                 bufferedWriter.newLine();
+                String tableColName = tableName + "." + colName;
+                Utils.colToColDef.put(tableColName,colDef);
             }
             bufferedWriter.flush();
             bufferedWriter.close();
@@ -167,7 +169,7 @@ public class PreProcessor {
                 numOfLines++;
 
             }
-            saveColBytesCnts(colBytesCnts, colDefs);
+            saveColBytesCnts(colBytesCnts, colDefs,tableName);
             Utils.tableToLines.put(tableName, numOfLines);
             bufferedReader.close();
             flushAndClose(dataOutputStream);
@@ -179,12 +181,14 @@ public class PreProcessor {
         }
     }
 
-    private void saveColBytesCnts(Long[] colBytesCnts, List<ColumnDefinition> colDefs) {
+    private void saveColBytesCnts(Long[] colBytesCnts, List<ColumnDefinition> colDefs,String tableName) {
         for (int i = 0; i < colBytesCnts.length; i++) {
             String colName = colDefs.get(i).getColumnName();
-            Utils.colToByteCnt.put(colName, colBytesCnts[i]);
+            String tableColName = tableName+"." + colName;
+            Utils.colToByteCnt.put(tableColName, colBytesCnts[i]);
             try {
-                DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(new File(Constants.COLUMN_BYTES_DIR, colName)));
+
+                DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(new File(Constants.COLUMN_BYTES_DIR, tableColName)));
                 dataOutputStream.writeLong(colBytesCnts[i]);
                 flushAndClose(dataOutputStream);
             } catch (IOException e) {
@@ -224,7 +228,7 @@ public class PreProcessor {
         int i = 0;
         for (ColumnDefinition columnDefinition : colDefs) {
             String colName = columnDefinition.getColumnName();
-            File columnFile = new File(tableColDir, colName);
+            File columnFile = new File(tableColDir, tableName + "." +colName);
             try {
                 FileOutputStream fileOutputStream = new FileOutputStream(columnFile);
                 BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);

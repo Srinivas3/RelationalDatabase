@@ -13,7 +13,7 @@ import java.io.*;
 import java.sql.SQLException;
 import java.util.*;
 
-public class OrderByOperator implements Operator {
+public class OrderByOperator implements Operator,SingleChildOperator {
     static int mergefilecount = 0;
     Operator child;
     List<OrderByElement> orderByElements;
@@ -49,10 +49,8 @@ public class OrderByOperator implements Operator {
         this.orderByElements = orderByElements;
         this.child = operator;
         setSchema();
-        this.childTuple = child.next();
         colNameToIdx = new LinkedHashMap<String, Integer>();
         idxToColName = new LinkedHashMap<Integer, String>();
-        Utils.fillColIdx(childTuple, colNameToIdx, idxToColName);
         isFirstCall = true;
         compareTuples = new CompareTuples();
     }
@@ -86,6 +84,10 @@ public class OrderByOperator implements Operator {
 
     private Map<String, PrimitiveValue> inMemorySortNext() {
         if (isFirstCall) {
+            if (childTuple == null){
+                childTuple = child.next();
+            }
+            Utils.fillColIdx(childTuple, colNameToIdx, idxToColName);
             isFirstCall = false;
             maxInMemoryTuples = 1000000;
             serializedChildTuples = new ArrayList<List<PrimitiveValue>>();
@@ -123,6 +125,10 @@ public class OrderByOperator implements Operator {
         if (!isFirstCall) {
             return Utils.convertToMap(getNextValueAndUpdateQueue(), idxToColName);
         }
+        if (childTuple == null){
+            childTuple = child.next();
+        }
+        Utils.fillColIdx(childTuple, colNameToIdx, idxToColName);
         isFirstCall = false;
         fileNameCounter = 0;
         directoryName = "sorted_files_" + UUID.randomUUID();
@@ -265,8 +271,18 @@ public class OrderByOperator implements Operator {
 
     }
 
+    @Override
+    public Operator getChild() {
+        return child;
+    }
 
-   public class CompareTuples extends Eval implements Comparator<List<PrimitiveValue>> {
+    @Override
+    public void setChild(Operator child) {
+        this.child = child;
+    }
+
+
+    public class CompareTuples extends Eval implements Comparator<List<PrimitiveValue>> {
 
         Map<String, PrimitiveValue> currTuple;
 

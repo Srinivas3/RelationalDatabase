@@ -15,6 +15,7 @@ import operators.joins.IndexScanOperator;
 import operators.joins.JoinOperator;
 import utils.Utils;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.*;
@@ -34,6 +35,96 @@ public class QueryOptimizer extends Eval {
         }
 
     }
+    public void projectionPushdown(Operator operator){
+        Set<String> colsRefered = new HashSet<String>();
+        replaceTableScans(colsRefered,operator);
+    }
+    public PrimitiveValue eval(Function function) throws SQLException {
+        List<Expression> expressions = function.getParameters().getExpressions();
+        for (Expression expression: expressions){
+            eval(expression);
+        }
+        return new LongValue(1);
+    }
+
+    private void replaceTableScans(Set<String> colsRefered, Operator operator) {
+        columnsInExp = new ArrayList<String>();
+        if (operator instanceof  ProjectionOperator || operator instanceof GroupByOperator){
+            List<SelectItem> selectItems =  getSelectItems(operator);
+            List<Expression> expressions = getExpressionsFromSelectItems(selectItems);
+            Expression addedExpression = constructByAdding(expressions);
+            try {
+                eval(addedExpression);
+            } catch (SQLException e) {
+            }
+            colsRefered.addAll(columnsInExp);
+        }
+        else if (operator instanceof SelectionOperator){
+            SelectionOperator selectionOperator = (SelectionOperator)operator;
+            try {
+                eval(selectionOperator.getWhereExp());
+            } catch (SQLException e) {
+            }
+            colsRefered.addAll(columnsInExp);
+
+        }
+        else if (operator instanceof JoinOperator){
+            JoinOperator joinOperator = (JoinOperator)operator;
+            try {
+                eval(joinOperator.getJoin().getOnExpression());
+            } catch (Exception e) {
+            }
+            colsRefered.addAll(columnsInExp);
+            Operator leftChild = joinOperator.getLeftChild();
+            Operator rightChild = joinOperator.getRightChild();
+            replaceTableScans(colsRefered,leftChild);
+            replaceTableScans(colsRefered,rightChild);
+            if (leftChild instanceof  TableScan){
+                TableScan tableScan = (TableScan) leftChild;
+                joinOperator.setChild("left",new ProjectedTableScan(colsRefered,tableScan.getTableName()));
+            }
+            if (rightChild instanceof  TableScan){
+                TableScan tableScan = (TableScan) rightChild;
+                joinOperator.setChild("right",new ProjectedTableScan(colsRefered,tableScan.getTableName()));
+            }
+        }
+        else if (operator instanceof TableScan){
+            return;
+        }
+        if (operator instanceof SingleChildOperator){
+            SingleChildOperator singleChildOperator = (SingleChildOperator)operator;
+            Operator child = singleChildOperator.getChild();
+            replaceTableScans(colsRefered,child);
+            if (child instanceof TableScan){
+                TableScan tableScan = (TableScan)child;
+                singleChildOperator.setChild(new ProjectedTableScan(colsRefered,tableScan.getTableName()));
+            }
+        }
+
+    }
+
+    private List<SelectItem> getSelectItems(Operator operator) {
+        if (operator instanceof  ProjectionOperator){
+            return ((ProjectionOperator)operator).getSelectItems();
+        }
+        if (operator instanceof  GroupByOperator){
+            return ((GroupByOperator)operator).getSelectItems();
+        }
+        return null;
+    }
+
+    private List<Expression> getExpressionsFromSelectItems(List<SelectItem> selectItems) {
+        List<Expression> expressions = new ArrayList<Expression>();
+        for (SelectItem selectItem: selectItems){
+            if (selectItem instanceof SelectExpressionItem){
+                SelectExpressionItem selectExpressionItem = (SelectExpressionItem)selectItem;
+                expressions.add(selectExpressionItem.getExpression());
+            }
+        }
+        return expressions;
+    }
+
+
     private Operator pushDown(SelectionOperator selectionOperator){
         Operator child = selectionOperator.getChild();
         if (child instanceof JoinOperator){
@@ -278,7 +369,6 @@ public class QueryOptimizer extends Eval {
             eval(expression);
         }
         catch (Exception e){
-            //e.printStackTrace();
         }
     }
     private Expression constructByAdding(List<Expression> expressions){

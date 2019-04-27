@@ -13,7 +13,7 @@ import utils.Utils;
 import java.sql.SQLException;
 import java.util.*;
 
-public class ProjectionOperator extends Eval implements Operator {
+public class ProjectionOperator extends Eval implements Operator,SingleChildOperator {
 
     private List<SelectItem> selectItems;
     private Operator child;
@@ -213,9 +213,14 @@ public class ProjectionOperator extends Eval implements Operator {
         }
         return tuple;
     }
-
+    @Override
     public Operator getChild() {
         return child;
+    }
+
+    @Override
+    public void setChild(Operator child) {
+        this.child = child;
     }
 
     public void init() {

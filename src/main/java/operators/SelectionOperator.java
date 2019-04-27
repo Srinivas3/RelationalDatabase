@@ -9,7 +9,7 @@ import utils.Utils;
 
 import java.util.Map;
 
-public class SelectionOperator extends Eval implements Operator {
+public class SelectionOperator extends Eval implements Operator,SingleChildOperator {
     private Expression whereExp;
     private Operator child;
     Map<String, PrimitiveValue> childTuple;

@@ -20,8 +20,9 @@ public class Utils {
     public static Map<String, PrimaryIndex> colToPrimIndex = new HashMap<String, PrimaryIndex>();
     public static Map<String, TreeMap<PrimitiveValue, List<Integer>>> colToSecIndex =
             new HashMap<String, TreeMap<PrimitiveValue, List<Integer>>>();
-
+    public static Map<String,byte[]> cachedCols = new HashMap<String,byte[]>();
     public static Map<String, String> colToIndexType = new HashMap<String, String>();
+    public static Map<String,ColumnDefinition> colToColDef = new HashMap<String,ColumnDefinition>();
 
     public static boolean isSameTable(String table, String col) {
         String[] partsCol = col.split("\\.");

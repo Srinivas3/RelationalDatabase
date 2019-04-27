@@ -1,6 +1,7 @@
 package operators;
 
 import aggregators.*;
+import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader;
 import net.sf.jsqlparser.eval.Eval;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Column;
@@ -12,9 +13,14 @@ import utils.Utils;
 import java.sql.SQLException;
 import java.util.*;
 
-public class GroupByOperator extends Eval implements Operator {
+public class GroupByOperator extends Eval implements Operator,SingleChildOperator {
 
     List<Column> groupByColumns;
+
+    public List<SelectItem> getSelectItems() {
+        return selectItems;
+    }
+
     List<SelectItem> selectItems;
     Operator child;
     Map<String, List<PrimitiveValue>> groupToTuple;
@@ -204,5 +210,15 @@ public class GroupByOperator extends Eval implements Operator {
         } else {
             return this.missing("Function:" + fn);
         }
+    }
+
+    @Override
+    public Operator getChild() {
+        return child;
+    }
+
+    @Override
+    public void setChild(Operator child) {
+        this.child = child;
     }
 }
