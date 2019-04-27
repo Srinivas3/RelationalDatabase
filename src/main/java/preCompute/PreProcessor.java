@@ -31,7 +31,7 @@ public class PreProcessor {
         populateTableSchema();
         saveColDefsToDisk();
         scanTableOperations();
-        saveSecondaryIndex();
+        //saveSecondaryIndex();
         populateTupleCount();
         //buildPrimaryIndexAndSave();
 
