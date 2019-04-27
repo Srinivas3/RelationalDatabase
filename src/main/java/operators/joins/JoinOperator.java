@@ -78,9 +78,6 @@ public class JoinOperator implements Operator {
         this.join = join;
         setSchema();
         isFirstCall = true;
-        if (!join.isSimple() && Utils.inMemoryMode) {
-            setEquiJoinAlgorithm();
-        }
         mergedTuple = new LinkedHashMap<String, PrimitiveValue>();
     }
 
@@ -162,9 +159,14 @@ public class JoinOperator implements Operator {
             leftIdxToColName = Utils.getIdxToCol(leftColNameToIdx);
             rightColNameToIdx = rightChild.getSchema();
             rightIdxToColName = Utils.getIdxToCol(rightColNameToIdx);
-            if (!Utils.inMemoryMode) {
+            if (Utils.inMemoryMode) {
+                joinAlgorithm = new OnePassHashJoin(this);
+            }
+            else{
                 joinAlgorithm = new SortMergeJoin(this);
             }
+
+
         }
         if (join.isSimple()) {
             return simpleJoinNext();
