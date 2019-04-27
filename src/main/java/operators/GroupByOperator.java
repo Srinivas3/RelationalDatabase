@@ -1,7 +1,6 @@
 package operators;
 
 import aggregators.*;
-import com.sun.xml.internal.bind.v2.runtime.unmarshaller.XsiNilLoader;
 import net.sf.jsqlparser.eval.Eval;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.Column;

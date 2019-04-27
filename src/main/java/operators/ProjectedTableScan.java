@@ -6,7 +6,6 @@ import utils.Constants;
 import utils.Utils;
 
 import java.io.*;
-import java.net.Socket;
 import java.util.*;
 
 public class ProjectedTableScan implements Operator {
