@@ -40,9 +40,11 @@ public class QueryOptimizer extends Eval {
         replaceTableScans(colsRefered,operator);
     }
     public PrimitiveValue eval(Function function) throws SQLException {
-        List<Expression> expressions = function.getParameters().getExpressions();
-        for (Expression expression: expressions){
-            eval(expression);
+        if(function.isAllColumns()!=true){
+            List<Expression> expressions = function.getParameters().getExpressions();
+            for (Expression expression: expressions){
+                eval(expression);
+            }
         }
         return new LongValue(1);
     }
