@@ -16,22 +16,11 @@ public class IntegerIndex extends PrimaryIndex {
     private int primaryKeys[];
 
     public int getPosition(PrimitiveValue primitiveValue) {
-        try {
-            int key = (int) primitiveValue.toLong();
-            int position = Arrays.binarySearch(primaryKeys,key);
-            if(position<0) {
-                position = (position * -1) - 1;
-            }
-            return position;
-        } catch (PrimitiveValue.InvalidPrimitive throwables) {
-            throwables.printStackTrace();
-        }
-        return -1;
+        return getPosition(primitiveValue, primaryKeys);
     }
 
-
     public IntegerIndex(Table table, String colName) {
-        super(table,colName);
+        super(table, colName);
         primaryKeys = new int[numOfLines];
     }
 
@@ -44,7 +33,7 @@ public class IntegerIndex extends PrimaryIndex {
     }
 
     protected void writePrimaryKeysToStream(DataOutputStream dataOutputStream) {
-        for(int i = 0;i<numOfLines;i++){
+        for (int i = 0; i < numOfLines; i++) {
             try {
                 dataOutputStream.writeInt(primaryKeys[i]);
             } catch (IOException e) {

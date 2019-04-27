@@ -81,6 +81,9 @@ public class PreProcessor {
 
     private void populateIndexTypes() {
         List<Index> indexes = createTableStatement.getIndexes();
+        if(indexes == null){
+            return;
+        }
         for (Index index : indexes) {
             String tableColName = createTableStatement.getTable().getName() + "." + index.getColumnsNames().get(0);
             if (createTableStatement.getTable().getName().equalsIgnoreCase("lineitem")) {

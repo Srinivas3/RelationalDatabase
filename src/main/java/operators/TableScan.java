@@ -43,6 +43,11 @@ public class TableScan implements Operator {
         init();
         bytesReadSoFar = 0;
     }
+
+    public void setLinesScanned(int linesScanned) {
+        this.linesScanned = linesScanned;
+    }
+
     public int getBytesReadSoFar() {
         return bytesReadSoFar;
     }

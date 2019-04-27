@@ -13,21 +13,11 @@ public class DoubleIndex extends PrimaryIndex {
 
 
     public int getPosition(PrimitiveValue primitiveValue) {
-        try {
-            double key = primitiveValue.toDouble();
-            int position = Arrays.binarySearch(primaryKeys,key);
-            if(position<0) {
-                position = (position * -1) - 1;
-            }
-            return position;
-        } catch (PrimitiveValue.InvalidPrimitive throwables) {
-            throwables.printStackTrace();
-        }
-        return -1;
+        return getPosition(primitiveValue, primaryKeys);
     }
 
     public DoubleIndex(Table table, String colName) {
-        super(table,colName);
+        super(table, colName);
         primaryKeys = new double[numOfLines];
     }
 
@@ -40,7 +30,7 @@ public class DoubleIndex extends PrimaryIndex {
     }
 
     protected void writePrimaryKeysToStream(DataOutputStream dataOutputStream) {
-        for(int i = 0;i<numOfLines;i++){
+        for (int i = 0; i < numOfLines; i++) {
             try {
                 dataOutputStream.writeDouble(primaryKeys[i]);
             } catch (IOException e) {
@@ -48,6 +38,7 @@ public class DoubleIndex extends PrimaryIndex {
             }
         }
     }
+
     protected void deserializePrimaryKeys(DataInputStream dataInputStream) {
         for (int i = 0; i < numOfLines; i++) {
             try {

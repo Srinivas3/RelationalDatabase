@@ -25,7 +25,7 @@ public class EquiJoinUtils {
         leftSchema = joinOperator.getLeftChild().getSchema();
         rightSchema = joinOperator.getRightChild().getSchema();
         joinColPairs = new ArrayList<List<String>>();
-        if (joinOperator.getJoin().isSimple()) {
+        if (joinOperator.getJoin().isNatural()) {
             updateCommonCols();
         } else {
             parseExpressionAndUpdateColPairs(joinOperator.getJoin().getOnExpression());

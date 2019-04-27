@@ -1,15 +1,11 @@
 package operators.joins;
 
-import net.sf.jsqlparser.eval.Eval;
+import Indexes.PrimaryIndex;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.PrimitiveValue;
-import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
 import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.schema.PrimitiveType;
-import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.Join;
-import net.sf.jsqlparser.statement.select.OrderByElement;
 import operators.*;
 import utils.Utils;
 
@@ -28,7 +24,11 @@ public class JoinOperator implements Operator {
     private Map<Integer, String> leftIdxToColName;
     private Map<Integer, String> rightIdxToColName;
     private List<List<String>> joinColPairs;
-
+    private boolean isFirstCall;
+    List<List<PrimitiveValue>> leftMatchedTuples;
+    private JoinAlgorithm joinAlgorithm;
+    private Map<String, PrimitiveValue> mergedTuple;
+    private Map<String, Integer> schema;
 
     public Map<String, Integer> getLeftColNameToIdx() {
         return leftColNameToIdx;
@@ -63,7 +63,6 @@ public class JoinOperator implements Operator {
     }
 
 
-
     public boolean isFirstCall() {
         return isFirstCall;
     }
@@ -72,12 +71,6 @@ public class JoinOperator implements Operator {
         isFirstCall = firstCall;
     }
 
-    private boolean isFirstCall;
-    List<List<PrimitiveValue>> leftMatchedTuples;
-    private JoinAlgorithm joinAlgorithm;
-    private Map<String, PrimitiveValue> mergedTuple;
-    private Map<String, Integer> schema;
-
 
     public JoinOperator(Operator leftChild, Operator rightChild, Join join) {
         this.leftChild = leftChild;
@@ -85,6 +78,9 @@ public class JoinOperator implements Operator {
         this.join = join;
         setSchema();
         isFirstCall = true;
+        if (!join.isSimple() && Utils.inMemoryMode) {
+            setEquiJoinAlgorithm();
+        }
         mergedTuple = new LinkedHashMap<String, PrimitiveValue>();
     }
 
@@ -148,12 +144,14 @@ public class JoinOperator implements Operator {
     }
 
 
-
     public Map<String, Integer> getSchema() {
         return schema;
     }
 
     public Map<String, PrimitiveValue> next() {
+        if (joinAlgorithm instanceof IndexNestedLoopJoin) {
+            return joinAlgorithm.getNextValue();
+        }
         if (isFirstCall) {
             leftChildTuple = this.leftChild.next();
             rightChildTuple = this.rightChild.next();
@@ -164,13 +162,16 @@ public class JoinOperator implements Operator {
             leftIdxToColName = Utils.getIdxToCol(leftColNameToIdx);
             rightColNameToIdx = rightChild.getSchema();
             rightIdxToColName = Utils.getIdxToCol(rightColNameToIdx);
+            if (!Utils.inMemoryMode) {
+                joinAlgorithm = new SortMergeJoin(this);
+            }
         }
         if (join.isSimple()) {
             return simpleJoinNext();
         } else {
-            return equiJoinNext();
+            isFirstCall = false;
+            return joinAlgorithm.getNextValue();
         }
-
 
     }
 
@@ -190,16 +191,67 @@ public class JoinOperator implements Operator {
         return join;
     }
 
-    private Map<String, PrimitiveValue> equiJoinNext() {
-        if (isFirstCall) {
-            if (Utils.inMemoryMode) {
-                joinAlgorithm = new OnePassHashJoin(this);
-            } else {
-                joinAlgorithm = new SortMergeJoin(this);
+    private void setEquiJoinAlgorithm() {
+        Expression onExpression = join.getOnExpression();
+        if (onExpression instanceof EqualsTo) {
+            EqualsTo equalsToExp = (EqualsTo) onExpression;
+            IndexNestedLoopJoin indexNestedLoopJoin;
+            IndexScanOperator indexScan = getIndexScan(leftChild,equalsToExp);
+            if (indexScan != null){
+                String otherCol = getColBelongingToSchema(equalsToExp,rightChild.getSchema());
+                joinAlgorithm =  new IndexNestedLoopJoin(this, indexScan, rightChild,otherCol);
+                return;
             }
-            isFirstCall = false;
+            indexScan = getIndexScan(rightChild,equalsToExp);
+            if (indexScan != null){
+                String otherCol = getColBelongingToSchema(equalsToExp,leftChild.getSchema());
+                joinAlgorithm = new IndexNestedLoopJoin(this,indexScan,leftChild,otherCol);
+                return;
+            }
         }
-        return joinAlgorithm.getNextValue();
+        joinAlgorithm = new OnePassHashJoin(this);
+
+    }
+
+    private IndexScanOperator getIndexScan(Operator child, EqualsTo equalsToExp) {
+        Expression filterCond = null;
+        TableScan tableScan = null;
+        if (child instanceof TableScan){
+                 tableScan = (TableScan)child;
+        }
+        if (child instanceof SelectionOperator){
+            SelectionOperator selectionOperator = (SelectionOperator)child;
+            filterCond = selectionOperator.getWhereExp();
+            Operator selectionChild = selectionOperator.getChild();
+            if (selectionChild instanceof TableScan){
+                tableScan = (TableScan)selectionChild;
+            }
+        }
+        if (tableScan == null){
+            return null;
+        }
+        String tableColName = getColBelongingToSchema(equalsToExp,tableScan.getSchema());
+        PrimaryIndex primaryIndex = Utils.colToPrimIndex.get(tableColName);
+        if (primaryIndex == null){
+            return null;
+        }
+        return new IndexScanOperator("EqualsTo",filterCond,primaryIndex);
+    }
+
+
+
+
+    private String getColBelongingToSchema(EqualsTo equalsToExp, Map<String, Integer> schema) {
+        Column leftCol = (Column) equalsToExp.getLeftExpression();
+        Column rightCol = (Column) equalsToExp.getRightExpression();
+        String leftColStr = leftCol.toString();
+        String rightColStr = rightCol.toString();
+        if (schema.containsKey(leftColStr)) {
+            return leftColStr;
+        } else {
+            return rightColStr;
+        }
+
     }
 
     public void init() {
@@ -216,7 +268,6 @@ public class JoinOperator implements Operator {
             mergedTuple.put(key, rightTuple.get(key));
         return mergedTuple;
     }
-
 
 
 }

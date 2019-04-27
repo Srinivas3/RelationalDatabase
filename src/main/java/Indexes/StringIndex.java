@@ -12,14 +12,7 @@ public class StringIndex extends PrimaryIndex {
     private String primaryKeys[];
 
     public int getPosition(PrimitiveValue primitiveValue) {
-
-            String key = primitiveValue.toString();
-            int position = Arrays.binarySearch(primaryKeys,key);
-            if(position<0) {
-                position = (position * -1) - 1;
-            }
-            return position;
-
+        return getPosition(primitiveValue, primaryKeys);
     }
 
     public StringIndex(Table table, String colName) {
