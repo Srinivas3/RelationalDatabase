@@ -55,7 +55,6 @@ public class Main {
                         preComputeLoader.loadSavedState();
                         isFirstSelect = false;
                     }
-//                    printCacheState(bufferedWriter);
                     //long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
@@ -75,10 +74,12 @@ public class Main {
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
-                if(statements.size()> 15){
-                    for(Statement query : statements){
-                        bufferedWriter.write(query.toString());
-                        bufferedWriter.newLine();
+                if(statements.size() == 15){
+                    if (isPhaseOne){
+                        saveStatements(statements);
+                    }
+                    else{
+                        printStatements(statements,bufferedWriter);
                     }
                 }
                 bufferedWriter.write("$>" + "\n");
@@ -95,6 +96,44 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void printStatements(List<Statement> statements, BufferedWriter bufferedWriter) {
+        try{
+            bufferedWriter.write("Phase#1 statements:");
+            bufferedWriter.newLine();
+            File phaseOneStatsFile = new File(Constants.PHASE_ONE_STATEMENTS_FILE);
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(phaseOneStatsFile));
+            String line;
+            while((line = bufferedReader.readLine())!= null){
+                bufferedWriter.write(line);
+                bufferedWriter.newLine();
+            }
+            for(Statement statement: statements){
+                bufferedWriter.write(statements.toString());
+                bufferedWriter.newLine();
+            }
+        }
+        catch(Exception e){
+
+        }
+
+    }
+
+    private static void saveStatements(List<Statement> statements) {
+        File statmentsFile = new File(Constants.PHASE_ONE_STATEMENTS_FILE);
+        try {
+            BufferedWriter bufferedWriter  = new BufferedWriter(new FileWriter(statmentsFile));
+            for(Statement statement: statements){
+                bufferedWriter.write(statement.toString());
+                bufferedWriter.newLine();
+            }
+            bufferedWriter.flush();
+            bufferedWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
     }
 
     private static void printCacheState(BufferedWriter bufferedWriter) throws Exception {

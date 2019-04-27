@@ -10,4 +10,5 @@ public final class Constants {
     public static final String FORMAT = ".csv";
     public static final String COLUMN_STORE_DIR = "columnStore";
     public static final String COLUMN_BYTES_DIR = "columnBytes";
+    public static final String PHASE_ONE_STATEMENTS_FILE = "phaseOneStatements";
 }
