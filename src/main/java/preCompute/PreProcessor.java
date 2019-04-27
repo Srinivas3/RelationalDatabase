@@ -33,7 +33,7 @@ public class PreProcessor {
         scanTableOperations();
         saveSecondaryIndex();
         populateTupleCount();
-        buildPrimaryIndexAndSave();
+        //buildPrimaryIndexAndSave();
 
     }
 
@@ -159,7 +159,7 @@ public class PreProcessor {
                     String tableColName = tableName + "." + colDef.getColumnName();
                     String indexType = Utils.colToIndexType.get(tableColName);
                     if (!tableName.equalsIgnoreCase("lineitem") && indexType != null && indexType.equalsIgnoreCase("index")) {
-                        insertFilePosition(colDef, tableColName, tupleArr[i], bytesWrittenSoFar);
+                      //  insertFilePosition(colDef, tableColName, tupleArr[i], bytesWrittenSoFar);
                     }
                     tupleBytesWrittenSoFar += writeBytes(dataOutputStream, tupleArr[i], colDef);
                     colBytesCnts[i] += writeBytes(dataOutputStreams[i], tupleArr[i], colDef);
