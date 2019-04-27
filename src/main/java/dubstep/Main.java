@@ -55,7 +55,7 @@ public class Main {
                         preComputeLoader.loadSavedState();
                         isFirstSelect = false;
                     }
-                    printCacheState(bufferedWriter);
+//                    printCacheState(bufferedWriter);
                     //long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
@@ -161,7 +161,7 @@ public class Main {
     }
 
     public static void displayOutput(Operator operator, BufferedWriter bufferedWriter) throws Exception {
-        printOperatorTree(operator,bufferedWriter);
+//        printOperatorTree(operator,bufferedWriter);
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;

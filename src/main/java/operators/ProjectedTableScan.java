@@ -6,6 +6,7 @@ import utils.Constants;
 import utils.Utils;
 
 import java.io.*;
+import java.net.Socket;
 import java.util.*;
 
 public class ProjectedTableScan implements Operator {
@@ -56,6 +57,8 @@ public class ProjectedTableScan implements Operator {
             PrimitiveValue primitiveValue = readPrimitiveValueAndCache(columnDefinition.getColDataType().getDataType(), dataInputStream, tableColName);
             tuple.put(tableColName, primitiveValue);
         }
+
+
         return tuple;
     }
 
@@ -71,7 +74,7 @@ public class ProjectedTableScan implements Operator {
                 */
                 return new LongValue(val);
 
-            } else if (dataType.equalsIgnoreCase("double")) {
+            } else if (dataType.equalsIgnoreCase("decimal") || dataType.equalsIgnoreCase("float")) {
                 double val = dataInputStream.readDouble();
 //                if (dataOutputStream != null) {
 //                    dataOutputStream.writeDouble(val);
@@ -80,7 +83,7 @@ public class ProjectedTableScan implements Operator {
             } else {
                 int length = dataInputStream.readInt();
                 byte[] byteBuffer = new byte[length];
-//                dataInputStream.readFully(byteBuffer);
+                dataInputStream.readFully(byteBuffer);
 //                if (dataOutputStream != null) {
 //                    dataOutputStream.writeInt(length);
 //                    dataOutputStream.write(byteBuffer);
