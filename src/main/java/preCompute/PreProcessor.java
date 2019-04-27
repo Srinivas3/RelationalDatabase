@@ -81,7 +81,7 @@ public class PreProcessor {
 
     private void populateIndexTypes() {
         List<Index> indexes = createTableStatement.getIndexes();
-        if(indexes == null){
+        if (indexes == null) {
             return;
         }
         for (Index index : indexes) {
@@ -139,6 +139,8 @@ public class PreProcessor {
         File tableFile = new File("data", tableName + Constants.FORMAT);
         File compressedTableFile = new File(Constants.COMPRESSED_TABLES_DIR, tableName);
         List<ColumnDefinition> colDefs = Utils.nameToColDefs.get(tableName);
+        DataOutputStream[] dataOutputStreams = getDataOutputStreams(colDefs, tableName);
+        Long[] colBytesCnts = initializeColBytesCnts(colDefs.size());
         int numOfLines = 0;
 
         try {
@@ -158,7 +160,9 @@ public class PreProcessor {
                         insertFilePosition(colDef, tableColName, tupleArr[i], bytesWrittenSoFar);
                     }
                     tupleBytesWrittenSoFar += writeBytes(dataOutputStream, tupleArr[i], colDef);
+                    colBytesCnts[i] += writeBytes(dataOutputStreams[i], tupleArr[i], colDef);
                 }
+                saveColBytesCnts(colBytesCnts, colDefs);
                 bytesWrittenSoFar += tupleBytesWrittenSoFar;
                 tupleBytesWrittenSoFar = 0;
                 numOfLines++;
@@ -166,13 +170,72 @@ public class PreProcessor {
             }
             Utils.tableToLines.put(tableName, numOfLines);
             bufferedReader.close();
-            dataOutputStream.flush();
-            dataOutputStream.close();
+            flushAndClose(dataOutputStream);
+            flushAndClose(dataOutputStreams);
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private void saveColBytesCnts(Long[] colBytesCnts, List<ColumnDefinition> colDefs) {
+        for (int i = 0; i < colBytesCnts.length; i++) {
+            String colName = colDefs.get(i).getColumnName();
+            Utils.colToByteCnt.put(colName, colBytesCnts[i]);
+            try {
+                DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(new File(Constants.COLUMN_BYTES_DIR, colName)));
+                dataOutputStream.writeLong(colBytesCnts[i]);
+                flushAndClose(dataOutputStream);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+        }
+    }
+
+    private void flushAndClose(DataOutputStream dataOutputStream) {
+        try {
+            dataOutputStream.flush();
+            dataOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void flushAndClose(DataOutputStream[] dataOutputStreams) {
+        for (DataOutputStream dataOutputStream : dataOutputStreams) {
+            flushAndClose(dataOutputStream);
+        }
+    }
+
+    private Long[] initializeColBytesCnts(int numOfCols) {
+        Long[] colBytesCnts = new Long[numOfCols];
+        for (int i = 0; i < colBytesCnts.length; i++) {
+            colBytesCnts[i] = new Long(0);
+        }
+        return colBytesCnts;
+    }
+
+    private DataOutputStream[] getDataOutputStreams(List<ColumnDefinition> colDefs, String tableName) {
+        String tableColDir = Constants.COLUMN_STORE_DIR + "/" + tableName;
+        new File(tableColDir).mkdir();
+        DataOutputStream[] dataOutputStreams = new DataOutputStream[colDefs.size()];
+        int i = 0;
+        for (ColumnDefinition columnDefinition : colDefs) {
+            String colName = columnDefinition.getColumnName();
+            File columnFile = new File(tableColDir, colName);
+            try {
+                FileOutputStream fileOutputStream = new FileOutputStream(columnFile);
+                BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
+                dataOutputStreams[i] = new DataOutputStream(bufferedOutputStream);
+                i++;
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+
+        }
+        return dataOutputStreams;
     }
 
     private void insertFilePosition(ColumnDefinition colDef, String tableColName, String primValInString, int filePosition) {

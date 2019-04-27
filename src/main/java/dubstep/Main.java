@@ -102,6 +102,8 @@ public class Main {
         new File(Constants.LINES_DIR).mkdir();
         new File(Constants.PRIMARY_INDICES_DIR).mkdir();
         new File(Constants.SECONDARY_INDICES_DIR).mkdir();
+        new File(Constants.COLUMN_STORE_DIR).mkdir();
+        new File(Constants.COLUMN_BYTES_DIR).mkdir();
     }
 
 //    private static void debugCode() {

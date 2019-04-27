@@ -8,4 +8,6 @@ public final class Constants {
     public static final String LINES_DIR = "lines";
     public static final String SECONDARY_INDICES_DIR = "secondaryIndicesDir";
     public static final String FORMAT = ".csv";
+    public static final String COLUMN_STORE_DIR = "columnStore";
+    public static final String COLUMN_BYTES_DIR = "columnBytes";
 }

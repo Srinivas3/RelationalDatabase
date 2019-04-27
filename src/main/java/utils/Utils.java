@@ -15,6 +15,7 @@ public class Utils {
     public static Map<String, List<ColumnDefinition>> nameToColDefs = new HashMap<String, List<ColumnDefinition>>();
     public static boolean inMemoryMode = true;
     public static int diskCacheCnt = 0;
+    public static Map<String,Long> colToByteCnt = new HashMap<String,Long>();
     public static Map<String, Integer> tableToLines = new HashMap<String, Integer>();
     public static Map<String, PrimaryIndex> colToPrimIndex = new HashMap<String, PrimaryIndex>();
     public static Map<String, TreeMap<PrimitiveValue, List<Integer>>> colToSecIndex =
