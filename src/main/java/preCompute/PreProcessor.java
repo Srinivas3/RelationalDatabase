@@ -162,12 +162,12 @@ public class PreProcessor {
                     tupleBytesWrittenSoFar += writeBytes(dataOutputStream, tupleArr[i], colDef);
                     colBytesCnts[i] += writeBytes(dataOutputStreams[i], tupleArr[i], colDef);
                 }
-                saveColBytesCnts(colBytesCnts, colDefs);
                 bytesWrittenSoFar += tupleBytesWrittenSoFar;
                 tupleBytesWrittenSoFar = 0;
                 numOfLines++;
 
             }
+            saveColBytesCnts(colBytesCnts, colDefs);
             Utils.tableToLines.put(tableName, numOfLines);
             bufferedReader.close();
             flushAndClose(dataOutputStream);
