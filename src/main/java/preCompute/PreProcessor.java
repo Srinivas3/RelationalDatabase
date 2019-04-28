@@ -262,9 +262,9 @@ public class PreProcessor {
         String dataType = columnDefinition.getColDataType().getDataType().toLowerCase();
         try {
             if (dataType.equalsIgnoreCase("string") || dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("date")) {
-                dataOutputStream.writeInt(colInString.length());
+                dataOutputStream.writeShort((short)colInString.length());
                 dataOutputStream.write(colInString.getBytes());
-                return 4 + colInString.length();
+                return 2 + colInString.length();
             } else if (dataType.equalsIgnoreCase("int")) {
                 dataOutputStream.writeInt(Integer.valueOf(colInString));
                 return 4;
@@ -329,7 +329,7 @@ public class PreProcessor {
                 dataOutputStream.writeInt((int) primitiveValue.toLong());
             } else {
                 String primValInString = primitiveValue.toRawString();
-                dataOutputStream.writeInt(primValInString.length());
+                dataOutputStream.writeShort((short)primValInString.length());
                 dataOutputStream.writeBytes(primValInString);
             }
         } catch (Exception e) {

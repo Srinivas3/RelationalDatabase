@@ -91,7 +91,7 @@ public class ProjectedTableScan implements Operator {
         int length;
         byte[] byteArr = null;
         if (byteBuffer != null){
-            length = byteBuffer.getInt();
+            length = byteBuffer.get();
             byteArr = new byte[length];
             byteBuffer.get(byteArr);
         //    System.out.println("reading from byte buffer");
@@ -99,13 +99,13 @@ public class ProjectedTableScan implements Operator {
         else{
           //  System.out.println("reading from column store");
             DataInputStream dataInputStream = colTodataInputStream.get(tableColName);
-            length = dataInputStream.readInt();
+            length = (int)dataInputStream.readShort();
             byteArr = new byte[length];
             dataInputStream.readFully(byteArr);
         }
         ByteBuffer writeByteBuffer = localCachedCols.get(tableColName);
         if(writeByteBuffer != null){
-            writeByteBuffer.putInt(length);
+            writeByteBuffer.put((byte)length);
             writeByteBuffer.put(byteArr);
         }
         return new String(byteArr);

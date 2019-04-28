@@ -137,8 +137,8 @@ public class TableScan implements Operator {
 
     private PrimitiveValue getPrimitiveValue(String dataType) throws IOException {
         if (dataType.equalsIgnoreCase("string") || dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("date")) {
-            int numBytes = dataInputStream.readInt();
-            bytesReadSoFar += numBytes + 4;
+            int numBytes = (int)dataInputStream.readShort();
+            bytesReadSoFar += numBytes + 1;
             byte byteArr[] = new byte[numBytes];
             dataInputStream.readFully(byteArr);
             String value = new String(byteArr);
