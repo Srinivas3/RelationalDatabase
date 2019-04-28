@@ -25,6 +25,7 @@ public class PreProcessor {
     public PreProcessor(CreateTable createTableStatement) {
         this.createTableStatement = createTableStatement;
     }
+    public PreProcessor(){}
 
     public void preCompute() {
         populateIndexTypes();
@@ -158,9 +159,6 @@ public class PreProcessor {
                     ColumnDefinition colDef = colDefs.get(i);
                     String tableColName = tableName + "." + colDef.getColumnName();
                     String indexType = Utils.colToIndexType.get(tableColName);
-                    if (!tableName.equalsIgnoreCase("lineitem") && indexType != null && indexType.equalsIgnoreCase("index")) {
-                      //  insertFilePosition(colDef, tableColName, tupleArr[i], bytesWrittenSoFar);
-                    }
                     tupleBytesWrittenSoFar += writeBytes(dataOutputStream, tupleArr[i], colDef);
                     colBytesCnts[i] += writeBytes(dataOutputStreams[i], tupleArr[i], colDef);
                 }
@@ -207,7 +205,7 @@ public class PreProcessor {
         }
     }
 
-    private void flushAndClose(DataOutputStream[] dataOutputStreams) {
+    public void flushAndClose(DataOutputStream[] dataOutputStreams) {
         for (DataOutputStream dataOutputStream : dataOutputStreams) {
             flushAndClose(dataOutputStream);
         }
@@ -222,13 +220,21 @@ public class PreProcessor {
     }
 
     private DataOutputStream[] getDataOutputStreams(List<ColumnDefinition> colDefs, String tableName) {
+        List<String> tableColNames = new ArrayList<String>();
+        for (ColumnDefinition columnDefinition : colDefs) {
+            tableColNames.add(tableName + "." + columnDefinition.getColumnName());
+        }
+        return  openDataOutputStreams(tableColNames,tableName);
+    }
+
+    public DataOutputStream[] openDataOutputStreams(List<String> tableColNames, String tableName) {
+
         String tableColDir = Constants.COLUMN_STORE_DIR + "/" + tableName;
         new File(tableColDir).mkdir();
-        DataOutputStream[] dataOutputStreams = new DataOutputStream[colDefs.size()];
+        DataOutputStream[] dataOutputStreams = new DataOutputStream[tableColNames.size()];
         int i = 0;
-        for (ColumnDefinition columnDefinition : colDefs) {
-            String colName = columnDefinition.getColumnName();
-            File columnFile = new File(tableColDir, tableName + "." +colName);
+        for (String tableColName : tableColNames) {
+            File columnFile = new File(tableColDir, tableColName);
             try {
                 FileOutputStream fileOutputStream = new FileOutputStream(columnFile);
                 BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
@@ -321,7 +327,7 @@ public class PreProcessor {
 
     }
 
-    private void writeBytes(DataOutputStream dataOutputStream, PrimitiveValue primitiveValue) {
+    public void writeBytes(DataOutputStream dataOutputStream, PrimitiveValue primitiveValue) {
         try {
             if (primitiveValue instanceof DoubleValue) {
                 dataOutputStream.writeDouble(primitiveValue.toDouble());

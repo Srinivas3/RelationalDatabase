@@ -23,7 +23,7 @@ public class Utils {
     public static Map<String,byte[]> cachedCols = new HashMap<String,byte[]>();
     public static Map<String, String> colToIndexType = new HashMap<String, String>();
     public static Map<String,ColumnDefinition> colToColDef = new HashMap<String,ColumnDefinition>();
-
+    public static Map<String,Map<String,Integer>> viewToSchema = new HashMap<String,Map<String,Integer>>();
     public static boolean isSameTable(String table, String col) {
         String[] partsCol = col.split("\\.");
         if (partsCol.length == 2) {

@@ -11,4 +11,5 @@ public final class Constants {
     public static final String COLUMN_STORE_DIR = "columnStore";
     public static final String COLUMN_BYTES_DIR = "columnBytes";
     public static final String PHASE_ONE_STATEMENTS_FILE = "phaseOneStatements";
+    public  static final String VIEW_SCHEMA_DIR = "viewSchemas";
 }

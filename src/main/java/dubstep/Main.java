@@ -16,6 +16,7 @@ import operators.joins.JoinOperator;
 import optimizer.QueryOptimizer;
 import preCompute.PreComputeLoader;
 import preCompute.PreProcessor;
+import preCompute.ViewBuilder;
 import utils.Constants;
 import utils.Utils;
 
@@ -47,6 +48,7 @@ public class Main {
             Statement statement;
             List<Statement> statements = new ArrayList<Statement>();
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
+            int createStmnts = 0;
             while ((statement = parser.Statement()) != null) {
                 if (statement instanceof Select) {
                     statements.add(statement);
@@ -72,6 +74,10 @@ public class Main {
                     PreProcessor preProcessor = new PreProcessor(createTableStatement);
                     preProcessor.preCompute();
                     isPhaseOne = true;
+                    createStmnts++;
+                    if (createStmnts == 8){
+                        new ViewBuilder().buildViews();
+                    }
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
@@ -150,12 +156,11 @@ public class Main {
 
     private static void createDirs() {
         new File(Constants.COL_DEFS_DIR).mkdir();
-        new File(Constants.COMPRESSED_TABLES_DIR).mkdir();
         new File(Constants.LINES_DIR).mkdir();
-        new File(Constants.PRIMARY_INDICES_DIR).mkdir();
-        new File(Constants.SECONDARY_INDICES_DIR).mkdir();
+        new File(Constants.COMPRESSED_TABLES_DIR).mkdir();
         new File(Constants.COLUMN_STORE_DIR).mkdir();
         new File(Constants.COLUMN_BYTES_DIR).mkdir();
+        new File(Constants.VIEW_SCHEMA_DIR).mkdir();
     }
 
 //    private static void debugCode() {
@@ -222,7 +227,7 @@ public class Main {
             counter++;
         }
         //long time2 = System.currentTimeMillis();
-        //printOperatorTree(operator,bufferedWriter);
+//        printOperatorTree(operator,bufferedWriter);
         bufferedWriter.flush();
         //System.out.println(time2-time1);
     }

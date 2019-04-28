@@ -9,7 +9,9 @@ import utils.Utils;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.*;
 
 public class PreComputeLoader {
 
@@ -74,6 +76,30 @@ public class PreComputeLoader {
         for (File colDefsFile : colDefFiles) {
             saveTableSchema(colDefsFile);
         }
+        File viewSchemasDir = new File(Constants.VIEW_SCHEMA_DIR);
+        File[] viewSchemaFiles = viewSchemasDir.listFiles();
+        for(File viewSchemaFile: viewSchemaFiles){
+            loadViewSchema(viewSchemaFile);
+        }
+    }
+
+    private void loadViewSchema(File viewSchemaFile) {
+        String viewName = viewSchemaFile.getName();
+        try{
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(viewSchemaFile));
+            Map<String,Integer> viewSchema = new LinkedHashMap<String,Integer>();
+            int colTabCnt = 0;
+            String tableColName = null;
+            while((tableColName = bufferedReader.readLine())!= null){
+                viewSchema.put(tableColName,colTabCnt);
+                colTabCnt++;
+            }
+            Utils.viewToSchema.put(viewName,viewSchema);
+            bufferedReader.close();
+        }
+        catch (Exception e){
+
+        }
     }
 
     private void saveTableSchema(File colDefsFile) {
@@ -90,9 +116,11 @@ public class PreComputeLoader {
                 columnDefinition.setColDataType(colDataType);
                 String tableColName = colDefsFile.getName() + "." + columnDefinition.getColumnName();
                 Utils.colToColDef.put(tableColName,columnDefinition);
+                Utils.colToColDef.put(tableColName,columnDefinition);
                 columnDefinitions.add(columnDefinition);
             }
             Utils.nameToColDefs.put(colDefsFile.getName(), columnDefinitions);
+            bufferedReader.close();
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
