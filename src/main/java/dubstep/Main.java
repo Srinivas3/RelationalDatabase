@@ -75,7 +75,7 @@ public class Main {
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
-                if(statements.size() == 15){
+                if(statements.size() > 100){
                     if (isPhaseOne){
                         saveStatements(statements);
                     }

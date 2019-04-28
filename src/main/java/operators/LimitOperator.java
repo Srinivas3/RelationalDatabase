@@ -5,7 +5,7 @@ import net.sf.jsqlparser.statement.select.Limit;
 
 import java.util.Map;
 
-public class LimitOperator implements Operator {
+public class LimitOperator implements Operator, SingleChildOperator{
     long rowCount = 0;
     long offset = 0;
     Operator child;
@@ -37,5 +37,15 @@ public class LimitOperator implements Operator {
 
     public void init() {
 
+    }
+
+    @Override
+    public Operator getChild() {
+        return child;
+    }
+
+    @Override
+    public void setChild(Operator child) {
+        this.child = child;
     }
 }
