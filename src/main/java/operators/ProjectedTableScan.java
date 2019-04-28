@@ -6,6 +6,7 @@ import utils.Constants;
 import utils.Utils;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.util.*;
 
 public class ProjectedTableScan implements Operator {
@@ -19,9 +20,9 @@ public class ProjectedTableScan implements Operator {
     }
 
     String tableName;
-    List<DataInputStream> dataInputStreams;
-//    Map<String, ByteArrayOutputStream> localCachedCols;
-    //Map<String, DataOutputStream> localCachedColsOutputStr;
+    Map<String,DataInputStream> colTodataInputStream;
+    Map<String,ByteBuffer> cachedColToByteBuffer;
+    Map<String,ByteBuffer> localCachedCols;
     int totalNumTuples;
     int scannedTuples;
     Set<String> schemaCols;
@@ -45,52 +46,37 @@ public class ProjectedTableScan implements Operator {
             isFirstCall = false;
         }
         if (scannedTuples == totalNumTuples) {
-            //mergeLocalCachedCols();
+            mergeLocalCachedCols();
             return null;
         }
         scannedTuples++;
-        Iterator<DataInputStream> dataInputStreamIterator = dataInputStreams.iterator();
+
         for (String tableColName : schemaCols) {
-            DataInputStream dataInputStream = dataInputStreamIterator.next();
             ColumnDefinition columnDefinition = Utils.colToColDef.get(tableColName);
-            PrimitiveValue primitiveValue = readPrimitiveValueAndCache(columnDefinition.getColDataType().getDataType(), dataInputStream, tableColName);
+            String dataType = columnDefinition.getColDataType().getDataType();
+            PrimitiveValue primitiveValue = readPrimitiveValueAndCache(dataType,tableColName);
             tuple.put(tableColName, primitiveValue);
         }
-
 
         return tuple;
     }
 
-    private PrimitiveValue readPrimitiveValueAndCache(String dataType, DataInputStream dataInputStream, String tableColName) {
-       // DataOutputStream dataOutputStream = localCachedColsOutputStr.get(tableColName);
+    private PrimitiveValue readPrimitiveValueAndCache(String dataType, String tableColName) {
         try {
             if (dataType.equalsIgnoreCase("int")) {
-                int val = dataInputStream.readInt();
-         /*
-                if (dataOutputStream != null) {
-                    dataOutputStream.writeInt(val);
-                }
-                */
+                int val = getIntValueAndCacheBytes(tableColName);
                 return new LongValue(val);
 
             } else if (dataType.equalsIgnoreCase("decimal") || dataType.equalsIgnoreCase("float")) {
-                double val = dataInputStream.readDouble();
-//                if (dataOutputStream != null) {
-//                    dataOutputStream.writeDouble(val);
-//                }
+                double val = getDoubleValueAndCacheBytes(tableColName);
                 return new DoubleValue(val);
+
             } else {
-                int length = dataInputStream.readInt();
-                byte[] byteBuffer = new byte[length];
-                dataInputStream.readFully(byteBuffer);
-//                if (dataOutputStream != null) {
-//                    dataOutputStream.writeInt(length);
-//                    dataOutputStream.write(byteBuffer);
-//                }
+                String stringVal = getStringValue(tableColName);
                 if (dataType.equalsIgnoreCase("date")) {
-                    return new DateValue(new String(byteBuffer));
+                    return new DateValue(stringVal);
                 } else {
-                    return new StringValue(new String(byteBuffer));
+                    return new StringValue(stringVal);
                 }
             }
 
@@ -100,51 +86,100 @@ public class ProjectedTableScan implements Operator {
         return null;
     }
 
+    private String getStringValue(String tableColName) throws IOException {
+        ByteBuffer byteBuffer = cachedColToByteBuffer.get(tableColName);
+        int length;
+        byte[] byteArr = null;
+        if (byteBuffer != null){
+            length = byteBuffer.getInt();
+            byteArr = new byte[length];
+            byteBuffer.get(byteArr);
+        //    System.out.println("reading from byte buffer");
+        }
+        else{
+          //  System.out.println("reading from column store");
+            DataInputStream dataInputStream = colTodataInputStream.get(tableColName);
+            length = dataInputStream.readInt();
+            byteArr = new byte[length];
+            dataInputStream.readFully(byteArr);
+        }
+        ByteBuffer writeByteBuffer = localCachedCols.get(tableColName);
+        if(writeByteBuffer != null){
+            writeByteBuffer.putInt(length);
+            writeByteBuffer.put(byteArr);
+        }
+        return new String(byteArr);
+    }
+
+    private double getDoubleValueAndCacheBytes(String tableColName) throws IOException {
+        ByteBuffer byteBuffer = cachedColToByteBuffer.get(tableColName);
+        double val;
+        if (byteBuffer != null){
+            val = byteBuffer.getDouble();
+        }
+        else{
+            val = colTodataInputStream.get(tableColName).readDouble();
+        }
+        ByteBuffer writeByteBuffer = localCachedCols.get(tableColName);
+        if(writeByteBuffer != null){
+            writeByteBuffer.putDouble(val);
+        }
+        return val;
+    }
+
+
+    private int getIntValueAndCacheBytes(String tableColName) throws IOException {
+       ByteBuffer byteBuffer = cachedColToByteBuffer.get(tableColName);
+       int val;
+       if (byteBuffer != null){
+           val = byteBuffer.getInt();
+       }
+       else{
+           val = colTodataInputStream.get(tableColName).readInt();
+       }
+       ByteBuffer writeByteBuffer = localCachedCols.get(tableColName);
+       if(writeByteBuffer != null){
+           writeByteBuffer.putInt(val);
+       }
+       return val;
+    }
 
 
 
-//    private void mergeLocalCachedCols() {
-//        Set<String> colNames = localCachedCols.keySet();
-//        for (String colName : colNames) {
-//            try {
-//               DataOutputStream dataOutputStream = localCachedColsOutputStr.get(colName);
-//                dataOutputStream.flush();
-//                Utils.cachedCols.put(colName, localCachedCols.get(colName).toByteArray());
-//                dataOutputStream.close();
-//            }
-//            catch (Exception e){
-//                e.printStackTrace();
-//            }
-//
-//        }
-//        localCachedCols = null;
-//    }
+    private void mergeLocalCachedCols() {
+        Set<String> tableColNames = localCachedCols.keySet();
+        for (String tableColName : tableColNames) {
+                Utils.cachedCols.put(tableColName, localCachedCols.get(tableColName).array());
+        }
+        localCachedCols = null;
+    }
 
     private void openDataInputStreams() {
-        dataInputStreams = new ArrayList<DataInputStream>();
-//        localCachedCols = new HashMap<String, ByteArrayOutputStream>();
-//        localCachedColsOutputStr = new HashMap<String,DataOutputStream>();
+        colTodataInputStream = new HashMap<String,DataInputStream>();
+        localCachedCols = new HashMap<String, ByteBuffer>();
+        cachedColToByteBuffer = new HashMap<String,ByteBuffer>();
         Set<String> colsInSchema = schema.keySet();
         for (String tableColName : colsInSchema) {
             try {
                 DataInputStream dataInputStream = null;
                 if (!Utils.cachedCols.containsKey(tableColName)) {
                     File colFile = new File(Constants.COLUMN_STORE_DIR + "/" + tableName,tableColName);
-
                     FileInputStream fileInputStream = new FileInputStream(colFile);
                     BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
                     dataInputStream = new DataInputStream(bufferedInputStream);
-//                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(Utils.colToByteCnt.get(tableColName).intValue());
-                    //localCachedCols.put(tableColName, byteArrayOutputStream);
-//                    DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
-                    //localCachedColsOutputStr.put(tableColName,dataOutputStream);
+                    colTodataInputStream.put(tableColName,dataInputStream);
+                    if (Utils.isCachable(tableColName)){
+                        int colByteCnt = Utils.colToByteCnt.get(tableColName).intValue();
+                        byte[] colCache = new byte[colByteCnt];
+                        ByteBuffer byteBuffer = ByteBuffer.wrap(colCache);
+                        localCachedCols.put(tableColName, byteBuffer);
+                    }
 
                 } else {
                     byte[] cachedBytes = Utils.cachedCols.get(tableColName);
-                    ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(cachedBytes);
-                    dataInputStream = new DataInputStream(byteArrayInputStream);
+                    ByteBuffer byteBuffer = ByteBuffer.wrap(cachedBytes);
+                    cachedColToByteBuffer.put(tableColName, byteBuffer);
                 }
-                dataInputStreams.add(dataInputStream);
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }

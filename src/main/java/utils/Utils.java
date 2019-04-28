@@ -45,6 +45,15 @@ public class Utils {
             return null;
         }
     }
+    public static boolean isCachable(String tableColName){
+        if (Utils.cachedCols.size() > 5){
+            return false;
+        }
+        else{
+            return true;
+        }
+
+    }
 
     public static PrimitiveValue getPrimitiveValue(Expression expression){
         if(expression instanceof StringValue){

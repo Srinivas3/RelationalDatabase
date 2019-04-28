@@ -60,6 +60,7 @@ public class Main {
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
+                   // printCacheState(bufferedWriter);
                     //long endTime = System.currentTimeMillis();
                     //execution_times.add(endTime - startTime);
                 } else if (statement instanceof CreateTable) {
@@ -200,7 +201,6 @@ public class Main {
     }
 
     public static void displayOutput(Operator operator, BufferedWriter bufferedWriter) throws Exception {
-//        printOperatorTree(operator,bufferedWriter);
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
@@ -217,15 +217,14 @@ public class Main {
                 i += 1;
             }
             //bufferedWriter.write(counter);
-            //bufferedWriter.write(". ");
+           // bufferedWriter.write(". ");
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
         //long time2 = System.currentTimeMillis();
-        //bufferedWriter.write(time2-time1);
-
+        //printOperatorTree(operator,bufferedWriter);
         bufferedWriter.flush();
-
+        //System.out.println(time2-time1);
     }
 
 
