@@ -57,13 +57,14 @@ public class Main {
                         preComputeLoader.loadSavedState();
                         isFirstSelect = false;
                     }
-                    //long startTime = System.currentTimeMillis();
+                    long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
+                    root = queryOptimizer.replaceWithJoinViews(root);
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
-                   // printCacheState(bufferedWriter);
-                    //long endTime = System.currentTimeMillis();
+                    long endTime = System.currentTimeMillis();
+                    //bufferedWriter.write("Execution time for query " + String.valueOf(endTime-startTime));
                     //execution_times.add(endTime - startTime);
                 } else if (statement instanceof CreateTable) {
                     if (!areDirsCreated) {
@@ -206,6 +207,7 @@ public class Main {
     }
 
     public static void displayOutput(Operator operator, BufferedWriter bufferedWriter) throws Exception {
+
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
@@ -226,8 +228,9 @@ public class Main {
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
+
         //long time2 = System.currentTimeMillis();
-//        printOperatorTree(operator,bufferedWriter);
+       // printOperatorTree(operator,bufferedWriter);
         bufferedWriter.flush();
         //System.out.println(time2-time1);
     }
@@ -283,7 +286,7 @@ public class Main {
         }
         if (operator instanceof ProjectedTableScan){
             ProjectedTableScan projectedTableScan = (ProjectedTableScan)operator;
-            bufferedWriter.write("Projected table scan operator on table" + projectedTableScan.getTableName());
+            bufferedWriter.write("Projected table scan operator on table " + projectedTableScan.getTableName() + " with schema: ");
             bufferedWriter.newLine();
             printSchema(projectedTableScan.getSchema(),bufferedWriter);
             bufferedWriter.newLine();
@@ -313,6 +316,12 @@ public class Main {
             bufferedWriter.write("orderby operator");
             bufferedWriter.newLine();
             printOperatorTree(orderByOperator.getChild(),bufferedWriter);
+        }
+        if (operator instanceof LimitOperator){
+            LimitOperator limitOperator = (LimitOperator)operator;
+            bufferedWriter.write("limit operator");
+            bufferedWriter.newLine();
+            printOperatorTree(limitOperator.getChild(),bufferedWriter);
         }
 
     }

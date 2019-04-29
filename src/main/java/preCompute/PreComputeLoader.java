@@ -94,7 +94,7 @@ public class PreComputeLoader {
                 viewSchema.put(tableColName,colTabCnt);
                 colTabCnt++;
             }
-            Utils.viewToSchema.put(viewName,viewSchema);
+            Utils.joinViewToSchema.put(viewName,viewSchema);
             bufferedReader.close();
         }
         catch (Exception e){

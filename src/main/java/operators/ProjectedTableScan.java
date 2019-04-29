@@ -26,17 +26,19 @@ public class ProjectedTableScan implements Operator {
     int totalNumTuples;
     int scannedTuples;
     Set<String> schemaCols;
+    boolean isView;
 
-
-    public ProjectedTableScan(Set<String> projectedCols, String tableName) {
+    public ProjectedTableScan(Set<String> projectedCols, String tableName, boolean isView) {
         this.tableName = tableName;
         colDefs = Utils.nameToColDefs.get(tableName);
+        this.isView = isView;
         setSchema(projectedCols);
         schemaCols = schema.keySet();
         tuple = new LinkedHashMap<String, PrimitiveValue>();
         isFirstCall = true;
         totalNumTuples = Utils.tableToLines.get(tableName);
         scannedTuples = 0;
+
     }
 
     @Override
@@ -200,7 +202,12 @@ public class ProjectedTableScan implements Operator {
         int colCounter = 0;
         for (ColumnDefinition colDef : colDefs) {
             String colName = colDef.getColumnName();
-            String tableColName = this.tableName + "." + colName;
+            String tableColName;
+            if (isView) {
+                tableColName = colName;
+            } else {
+                tableColName = this.tableName + "." + colName;
+            }
             if (projectedCols == null) {
                 schema.put(tableColName, colCounter);
             } else if ((projectedCols.contains(tableColName) || projectedCols.contains(colName))) {

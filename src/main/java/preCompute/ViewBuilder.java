@@ -7,6 +7,7 @@ import net.sf.jsqlparser.parser.ParseException;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
+import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.select.Join;
 import net.sf.jsqlparser.statement.select.Select;
 import operators.Operator;
@@ -49,7 +50,6 @@ public class ViewBuilder {
         while((statement = ccjSqlParser.Statement())!= null){
             Select select = (Select)statement;
             Operator operator = Main.handleSelect(select);
-            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
             try {
                 writeViewToColumnStore(operator);
             } catch (Exception e) {
@@ -61,25 +61,44 @@ public class ViewBuilder {
 
     }
 
+    private void addColDefs(Map<String, Integer> schema,String viewName) {
+        List<ColumnDefinition> colDefs = new ArrayList<ColumnDefinition>();
+        Set<String> tableColNames = schema.keySet();
+        for(String tableColName: tableColNames){
+            ColumnDefinition columnDefinition = new ColumnDefinition();
+            ColumnDefinition originalColDef = Utils.colToColDef.get(tableColName);
+            columnDefinition.setColDataType(originalColDef.getColDataType());
+            columnDefinition.setColumnName(tableColName);
+            colDefs.add(columnDefinition);
+        }
+        Utils.nameToColDefs.put(viewName,colDefs);
+        preProcessor.saveColDefsToDisk(colDefs,viewName);
+    }
+
     private void writeViewToColumnStore(Operator operator) {
         String viewName = "view" + ++viewCnt;
+        addColDefs(operator.getSchema(),viewName);
         saveViewToSchema(viewName,operator);
         List<String> tableColNames = new ArrayList<String>();
         tableColNames.addAll(operator.getSchema().keySet());
         DataOutputStream[]  dataOutputStreams = preProcessor.openDataOutputStreams(tableColNames,viewName);
         Map<String,PrimitiveValue> tuple = null;
+        int numLines = 0;
         while((tuple = operator.next())!= null){
             int i = 0;
             for (String tableColName: tableColNames){
                 preProcessor.writeBytes(dataOutputStreams[i],tuple.get(tableColName));
                 i++;
             }
+            numLines++;
         }
+        Utils.tableToLines.put(viewName,numLines);
+        preProcessor.populateTupleCount(viewName);
         preProcessor.flushAndClose(dataOutputStreams);
     }
 
     private void saveViewToSchema(String viewName, Operator operator) {
-        Utils.viewToSchema.put(viewName,operator.getSchema());
+        Utils.joinViewToSchema.put(viewName,operator.getSchema());
         Set<String> schemaKeySet = operator.getSchema().keySet();
         File file = new File(Constants.VIEW_SCHEMA_DIR,viewName);
         try{

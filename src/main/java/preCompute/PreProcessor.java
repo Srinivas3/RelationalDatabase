@@ -25,7 +25,9 @@ public class PreProcessor {
     public PreProcessor(CreateTable createTableStatement) {
         this.createTableStatement = createTableStatement;
     }
-    public PreProcessor(){}
+
+    public PreProcessor() {
+    }
 
     public void preCompute() {
         populateIndexTypes();
@@ -41,6 +43,10 @@ public class PreProcessor {
 
     private void populateTupleCount() {
         String tableName = createTableStatement.getTable().getName();
+        populateTupleCount(tableName);
+
+    }
+    public void populateTupleCount(String tableName){
         File file = new File(Constants.LINES_DIR, tableName);
         try {
             DataOutputStream dataOutputStream = new DataOutputStream(new FileOutputStream(file));
@@ -57,6 +63,10 @@ public class PreProcessor {
     private void saveColDefsToDisk() {
         List<ColumnDefinition> columnDefinitions = createTableStatement.getColumnDefinitions();
         String tableName = createTableStatement.getTable().getName();
+        saveColDefsToDisk(columnDefinitions, tableName);
+    }
+
+    public void saveColDefsToDisk(List<ColumnDefinition> columnDefinitions, String tableName) {
         File colDefsFile = new File(Constants.COL_DEFS_DIR, tableName);
         try {
             FileWriter fileWriter = new FileWriter(colDefsFile);
@@ -67,7 +77,7 @@ public class PreProcessor {
                 bufferedWriter.write(colName + "," + colDataType);
                 bufferedWriter.newLine();
                 String tableColName = tableName + "." + colName;
-                Utils.colToColDef.put(tableColName,colDef);
+                Utils.colToColDef.put(tableColName, colDef);
             }
             bufferedWriter.flush();
             bufferedWriter.close();
@@ -167,7 +177,7 @@ public class PreProcessor {
                 numOfLines++;
 
             }
-            saveColBytesCnts(colBytesCnts, colDefs,tableName);
+            saveColBytesCnts(colBytesCnts, colDefs, tableName);
             Utils.tableToLines.put(tableName, numOfLines);
             bufferedReader.close();
             flushAndClose(dataOutputStream);
@@ -179,10 +189,10 @@ public class PreProcessor {
         }
     }
 
-    private void saveColBytesCnts(Long[] colBytesCnts, List<ColumnDefinition> colDefs,String tableName) {
+    private void saveColBytesCnts(Long[] colBytesCnts, List<ColumnDefinition> colDefs, String tableName) {
         for (int i = 0; i < colBytesCnts.length; i++) {
             String colName = colDefs.get(i).getColumnName();
-            String tableColName = tableName+"." + colName;
+            String tableColName = tableName + "." + colName;
             Utils.colToByteCnt.put(tableColName, colBytesCnts[i]);
             try {
 
@@ -224,7 +234,7 @@ public class PreProcessor {
         for (ColumnDefinition columnDefinition : colDefs) {
             tableColNames.add(tableName + "." + columnDefinition.getColumnName());
         }
-        return  openDataOutputStreams(tableColNames,tableName);
+        return openDataOutputStreams(tableColNames, tableName);
     }
 
     public DataOutputStream[] openDataOutputStreams(List<String> tableColNames, String tableName) {
@@ -268,7 +278,7 @@ public class PreProcessor {
         String dataType = columnDefinition.getColDataType().getDataType().toLowerCase();
         try {
             if (dataType.equalsIgnoreCase("string") || dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("date")) {
-                dataOutputStream.writeShort((short)colInString.length());
+                dataOutputStream.writeShort((short) colInString.length());
                 dataOutputStream.write(colInString.getBytes());
                 return 2 + colInString.length();
             } else if (dataType.equalsIgnoreCase("int")) {
@@ -335,7 +345,7 @@ public class PreProcessor {
                 dataOutputStream.writeInt((int) primitiveValue.toLong());
             } else {
                 String primValInString = primitiveValue.toRawString();
-                dataOutputStream.writeShort((short)primValInString.length());
+                dataOutputStream.writeShort((short) primValInString.length());
                 dataOutputStream.writeBytes(primValInString);
             }
         } catch (Exception e) {

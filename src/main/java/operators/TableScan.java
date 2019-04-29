@@ -26,13 +26,16 @@ public class TableScan implements Operator {
     Map<String, Integer> schema;
     int linesScanned;
     int totalLines;
-
-
-
+    private boolean isView;
     int bytesReadSoFar;
 
     public TableScan(Table table) {
         this.table = table;
+        constructorCommons();
+    }
+
+    private void constructorCommons() {
+
         this.filePath = "data/" + table.getName() + format;
         this.colDefs = Utils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();
@@ -42,6 +45,13 @@ public class TableScan implements Operator {
         setSchema();
         init();
         bytesReadSoFar = 0;
+    }
+
+    public TableScan(String viewName){
+        table = new Table();
+        table.setName(viewName);
+        isView = true;
+        constructorCommons();
     }
 
     public void setLinesScanned(int linesScanned) {
@@ -122,6 +132,9 @@ public class TableScan implements Operator {
     }
 
     public void init() {
+        if (isView){
+            return;
+        }
         try {
             if (dataInputStream != null) {
                 dataInputStream.close();
@@ -156,5 +169,13 @@ public class TableScan implements Operator {
         } else {
             return null;
         }
+    }
+
+    public boolean isView() {
+        return isView;
+    }
+
+    public void setView(boolean view) {
+        isView = view;
     }
 }
