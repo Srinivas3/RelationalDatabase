@@ -26,6 +26,11 @@ public class ProjectedTableScan implements Operator {
     int totalNumTuples;
     int scannedTuples;
     Set<String> schemaCols;
+
+    public boolean isView() {
+        return isView;
+    }
+
     boolean isView;
 
     public ProjectedTableScan(Set<String> projectedCols, String tableName, boolean isView) {
@@ -145,6 +150,9 @@ public class ProjectedTableScan implements Operator {
 
 
     private void mergeLocalCachedCols() {
+        if (localCachedCols == null){
+            return;
+        }
         Set<String> tableColNames = localCachedCols.keySet();
         for (String tableColName : tableColNames) {
             Utils.cachedCols.put(tableColName, localCachedCols.get(tableColName).array());

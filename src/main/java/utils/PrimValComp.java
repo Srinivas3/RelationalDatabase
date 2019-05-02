@@ -1,6 +1,7 @@
 package utils;
 
 import net.sf.jsqlparser.eval.Eval;
+import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
@@ -33,6 +34,41 @@ public class PrimValComp extends Eval implements Comparator<PrimitiveValue> {
 
         }
         return -1;
+
+    }
+    private PrimitiveValue getPrimitiveValue(Expression e){
+        if (e instanceof  PrimitiveValue){
+            return (PrimitiveValue)e;
+        }
+        else{
+            try {
+                return eval(e);
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+        }
+        return null;
+    }
+    public boolean isGreaterThan(Expression e1, Expression e2){
+        PrimitiveValue primitiveValue1 = getPrimitiveValue(e1);
+        PrimitiveValue primitiveValue2 = getPrimitiveValue(e2);
+        return compare(primitiveValue1,primitiveValue2) > 0;
+    }
+    public boolean isEqualTo(Expression e1,Expression e2){
+        PrimitiveValue primitiveValue1 = getPrimitiveValue(e1);
+        PrimitiveValue primitiveValue2 = getPrimitiveValue(e2);
+        return compare(primitiveValue1,primitiveValue2) == 0;
+    }
+    public boolean isMinorThan(Expression e1,Expression e2){
+        PrimitiveValue primitiveValue1 = getPrimitiveValue(e1);
+        PrimitiveValue primitiveValue2 = getPrimitiveValue(e2);
+        return compare(primitiveValue1,primitiveValue2) < 0;
+    }
+    public boolean isMinorThanEqual(Expression e1,Expression e2){
+        return isEqualTo(e1,e2) || isMinorThan(e1,e2);
+    }
+    public boolean isGreaterThanEqual(Expression e1,Expression e2){
+        return isEqualTo(e1,e2) || isGreaterThan(e1,e2);
     }
 
 

@@ -13,4 +13,7 @@ public final class Constants {
     public static final String PHASE_ONE_STATEMENTS_FILE = BASE_DIR + "phaseOneStatements";
     public  static final String VIEW_SCHEMA_DIR = BASE_DIR + "viewSchemas";
     public static final String VIEW_EXPS_DIR = BASE_DIR + "viewExps";
+    public static final String MAX_DATE_STR = "1999-01-01";
+    public static final String MIN_DATE_STR = "1992-01-01";
 }
+

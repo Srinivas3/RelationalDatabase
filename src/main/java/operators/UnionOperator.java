@@ -4,21 +4,48 @@ import net.sf.jsqlparser.expression.PrimitiveValue;
 
 import java.util.Map;
 
-public class UnionOperator implements Operator {
-   private Operator leftOperator;
-   private Operator rightOperator;
-   public UnionOperator(Operator leftOperator, Operator rightOperator){
+public class UnionOperator implements Operator,DoubleChildOperator {
+    private Operator leftOperator;
+    private Operator rightOperator;
+
+    public UnionOperator(Operator leftOperator, Operator rightOperator) {
         this.leftOperator = leftOperator;
         this.rightOperator = rightOperator;
     }
-    public Map<String, PrimitiveValue> next(){
-        return null;
+
+    public Map<String, PrimitiveValue> next() {
+        Map<String, PrimitiveValue> tuple = leftOperator.next();
+        if (tuple == null) {
+            tuple = rightOperator.next();
+        }
+        return tuple;
     }
-    public void init(){
+
+    public void init() {
 
     }
 
     public Map<String, Integer> getSchema() {
-        return null;
+        return leftOperator.getSchema();
+    }
+
+    @Override
+    public Operator getLeftChild() {
+        return leftOperator;
+    }
+
+    @Override
+    public Operator getRightChild() {
+        return rightOperator;
+    }
+
+    @Override
+    public void setLeftChild(Operator leftChild) {
+        this.leftOperator = leftChild;
+    }
+
+    @Override
+    public void setRightChild(Operator rightChild) {
+        this.rightOperator = rightChild;
     }
 }

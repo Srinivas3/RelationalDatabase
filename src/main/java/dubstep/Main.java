@@ -30,6 +30,7 @@ public class Main {
 
     public static void main(String args[]) throws ParseException, FileNotFoundException {
       //  new TimeTester().timeTester();
+        Utils.populateRangeScanData();
         long time1 = 0;
         long time2 = 0;
         try {
@@ -79,7 +80,7 @@ public class Main {
                     if (createStmnts == 8){
                         new ViewBuilder().buildViews();
                         time2 = System.currentTimeMillis();
-                        System.out.println("time for precompute:" + String.valueOf((time2-time1)/1000));
+//                        System.out.println("time for precompute:" + String.valueOf((time2-time1)/1000));
                     }
                 } else {
                     bufferedWriter.write("Invalid Query");
@@ -276,6 +277,17 @@ public class Main {
             bufferedWriter.newLine();
             printOperatorTree(joinOperator.getRightChild(), bufferedWriter);
         }
+        if (operator instanceof UnionOperator){
+            UnionOperator unionOperator = (UnionOperator)operator;
+            bufferedWriter.write("Union Operator");
+            bufferedWriter.newLine();
+            bufferedWriter.write("Left Child: ");
+            bufferedWriter.newLine();
+            printOperatorTree(unionOperator.getLeftChild(),bufferedWriter);
+            bufferedWriter.write("Right Child");
+            printOperatorTree(unionOperator.getRightChild(),bufferedWriter);
+            bufferedWriter.newLine();
+        }
 
 
         if (operator instanceof TableScan) {
@@ -292,6 +304,10 @@ public class Main {
             bufferedWriter.write("Projected table scan operator on table " + projectedTableScan.getTableName() + " with schema: ");
             bufferedWriter.newLine();
             printSchema(projectedTableScan.getSchema(),bufferedWriter);
+            bufferedWriter.newLine();
+            if (projectedTableScan.isView()){
+                bufferedWriter.write("View Expression is " + Utils.viewToExpression.get(projectedTableScan.getTableName()));
+            }
             bufferedWriter.newLine();
         }
         if (operator instanceof InMemoryCacheOperator) {

@@ -3,6 +3,8 @@ package utils;
 
 import Indexes.PrimaryIndex;
 import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
@@ -15,22 +17,164 @@ public class Utils {
     public static Map<String, List<ColumnDefinition>> nameToColDefs = new HashMap<String, List<ColumnDefinition>>();
     public static boolean inMemoryMode = true;
     public static int diskCacheCnt = 0;
-    public static Map<String,Long> colToByteCnt = new HashMap<String,Long>();
+    public static Map<String, Long> colToByteCnt = new HashMap<String, Long>();
     public static Map<String, Integer> tableToLines = new HashMap<String, Integer>();
     public static Map<String, PrimaryIndex> colToPrimIndex = new HashMap<String, PrimaryIndex>();
     public static Map<String, TreeMap<PrimitiveValue, List<Integer>>> colToSecIndex =
             new HashMap<String, TreeMap<PrimitiveValue, List<Integer>>>();
-    public static Map<String,byte[]> cachedCols = new HashMap<String,byte[]>();
+    public static Map<String, byte[]> cachedCols = new HashMap<String, byte[]>();
     public static Map<String, String> colToIndexType = new HashMap<String, String>();
-    public static Map<String,ColumnDefinition> colToColDef = new HashMap<String,ColumnDefinition>();
-    public static Map<String,Map<String,Integer>> viewToSchema = new HashMap<String,Map<String,Integer>>();
-    public static Map<String,Expression> viewToExpression = new HashMap<String,Expression>();
+    public static Map<String, ColumnDefinition> colToColDef = new HashMap<String, ColumnDefinition>();
+    public static Map<String, Map<String, Integer>> viewToSchema = new HashMap<String, Map<String, Integer>>();
+    public static Map<String, Expression> viewToExpression = new HashMap<String, Expression>();
+    public static Set<String> rangeScannedCols = new HashSet<String>();
+
     public static boolean isSameTable(String table, String col) {
         String[] partsCol = col.split("\\.");
         if (partsCol.length == 2) {
             return table.equalsIgnoreCase(partsCol[0]);
         }
         return false;
+    }
+
+    public static void populateRangeScanData() {
+        rangeScannedCols.add("LINEITEM.SHIPDATE");
+        rangeScannedCols.add("ORDERS.ORDERDATE");
+    }
+
+    public static List<Expression> getRangeExpressions(BinaryExpression basicExpression) {
+        GreaterThanEquals greaterThanEqualsExp = getGreaterEqualsExp(basicExpression);
+        MinorThan minorThanExp = getMinorThanExp(basicExpression);
+        Column column = getColumn(basicExpression);
+        String currMaxDate;
+        String currMinDate;
+        if (greaterThanEqualsExp == null) {
+            currMinDate = Constants.MIN_DATE_STR;
+        } else {
+            DateValue datePrimitiveVal = getDateValueFromFunction((Function) greaterThanEqualsExp.getRightExpression());
+            currMinDate = getNearestPrevNewYear(datePrimitiveVal);
+        }
+        if (minorThanExp == null) {
+            currMaxDate = Constants.MAX_DATE_STR;
+        } else {
+            DateValue datePrimitiveVal = getDateValueFromFunction((Function) minorThanExp.getRightExpression());
+            currMaxDate = getNearestNextNewYear(datePrimitiveVal);
+        }
+        List<Expression> rangeExps = new ArrayList<Expression>();
+        String runningDate = currMinDate;
+        DateValue runningDateValue = new DateValue(runningDate);
+        while (runningDate.compareTo(currMaxDate) < 0) {
+            GreaterThanEquals currGreaterThanEquals = new GreaterThanEquals(column, getDateFunction(runningDateValue));
+            runningDate = getNextNewYear(runningDateValue);
+            runningDateValue = new DateValue(runningDate);
+            MinorThan currMinorThan = new MinorThan(column, getDateFunction(runningDateValue));
+            rangeExps.add(new AndExpression(currGreaterThanEquals, currMinorThan));
+        }
+        return rangeExps;
+    }
+
+    private static Column getColumn(BinaryExpression basicExpression) {
+        if (basicExpression.getLeftExpression() instanceof Column){
+            return (Column)basicExpression.getLeftExpression();
+        }
+        if (basicExpression.getRightExpression() instanceof  Column){
+            return (Column)basicExpression.getRightExpression();
+        }
+        return null;
+    }
+
+    private static String getNextNewYear(DateValue runningDateValue) {
+        String[] parts = runningDateValue.toRawString().split("-");
+        String newYear = String.valueOf(Integer.valueOf(parts[0]) + 1);
+        return newYear + "-01-01";
+    }
+
+    private static MinorThan getMinorThanExp(BinaryExpression basicExpression) {
+        if (basicExpression instanceof AndExpression) {
+            MinorThan minorThanExp = getMinorThanExp((BinaryExpression) basicExpression.getLeftExpression());
+            if (minorThanExp == null) {
+                return getMinorThanExp((BinaryExpression) basicExpression.getRightExpression());
+            } else {
+                return minorThanExp;
+            }
+        } else {
+            if (basicExpression instanceof MinorThan) {
+                return (MinorThan) basicExpression;
+            } else if (basicExpression instanceof MinorThanEquals) {
+                Column column = (Column) basicExpression.getLeftExpression();
+                DateValue dateValue = getDateValueFromFunction((Function) basicExpression.getRightExpression());
+                DateValue nearestPrevDateValue = new DateValue(getNearestPrevNewYear(dateValue));
+                Function dateFunction = getDateFunction(dateValue);
+                return new MinorThan(column, dateFunction);
+            } else {
+                return null;
+            }
+
+        }
+    }
+
+    private static GreaterThanEquals getGreaterEqualsExp(BinaryExpression basicExpression) {
+        if (basicExpression instanceof AndExpression) {
+            GreaterThanEquals greaterThanEqualsExp = getGreaterEqualsExp((BinaryExpression) basicExpression.getLeftExpression());
+            if (greaterThanEqualsExp == null) {
+                return getGreaterEqualsExp((BinaryExpression) basicExpression.getRightExpression());
+            } else {
+                return greaterThanEqualsExp;
+            }
+        } else {
+            if (basicExpression instanceof GreaterThanEquals) {
+                return (GreaterThanEquals) basicExpression;
+            } else if (basicExpression instanceof GreaterThan) {
+                return new GreaterThanEquals(basicExpression.getLeftExpression(), basicExpression.getRightExpression());
+            } else {
+                return null;
+            }
+        }
+
+    }
+
+    private static DateValue getDateValueFromFunction(Function function) {
+        StringValue stringValue = (StringValue) function.getParameters().getExpressions().get(0);
+        return new DateValue(stringValue.toRawString());
+    }
+
+    public static Function getDateFunction(DateValue dateValue) {
+        Function function = new Function();
+        function.setName("DATE");
+        List<Expression> expressions = new ArrayList<Expression>();
+        expressions.add(new StringValue(dateValue.toRawString()));
+        ExpressionList expressionList = new ExpressionList();
+        expressionList.setExpressions(expressions);
+        function.setParameters(expressionList);
+        return function;
+    }
+
+    private static String getNearestNextNewYear(DateValue datePrimitiveVal) {
+        if (checkIfNewYear(datePrimitiveVal)) {
+            return datePrimitiveVal.toRawString();
+        } else {
+            String currYear = datePrimitiveVal.toRawString().split("-")[0];
+            String nextYear = String.valueOf(Integer.valueOf(currYear) + 1);
+            return nextYear + "-01-01";
+        }
+    }
+
+    private static String getNearestPrevNewYear(DateValue datePrimitiveVal) {
+        if (checkIfNewYear(datePrimitiveVal)) {
+            return datePrimitiveVal.toRawString();
+        } else {
+            String currYear = datePrimitiveVal.toRawString().split("-")[0];
+            String nextYear = String.valueOf(Integer.valueOf(currYear) - 1);
+            return nextYear + "-01-01";
+        }
+    }
+
+    private static boolean checkIfNewYear(DateValue datePrimitiveVal) {
+        String dateStr = datePrimitiveVal.toRawString();
+        String[] parts = dateStr.split("-");
+        int month = Integer.valueOf(parts[1]);
+        int day = Integer.valueOf(parts[2]);
+        return month == 1 && day == 1;
     }
 
     public static PrimitiveValue getPrimitiveValue(String dataType, String primValInString) {
@@ -46,22 +190,22 @@ public class Utils {
             return null;
         }
     }
-    public static boolean isCachable(String tableColName){
+
+    public static boolean isCachable(String tableColName) {
         return false;
     }
 
 
-    public static PrimitiveValue getPrimitiveValue(Expression expression){
-        if(expression instanceof StringValue){
-            return (StringValue)expression;
-        }else if(expression instanceof DoubleValue){
-            return (DoubleValue)expression;
-        }else if(expression instanceof LongValue){
+    public static PrimitiveValue getPrimitiveValue(Expression expression) {
+        if (expression instanceof StringValue) {
+            return (StringValue) expression;
+        } else if (expression instanceof DoubleValue) {
+            return (DoubleValue) expression;
+        } else if (expression instanceof LongValue) {
             return (LongValue) expression;
-        }else if(expression instanceof DateValue){
+        } else if (expression instanceof DateValue) {
             return (DateValue) expression;
-        }
-        else {
+        } else {
             return null;
         }
     }

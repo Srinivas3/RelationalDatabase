@@ -13,7 +13,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.*;
 
-public class JoinOperator implements Operator {
+public class JoinOperator implements Operator,DoubleChildOperator {
     private Operator leftChild;
     private Operator rightChild;
     private Join join;
@@ -87,6 +87,16 @@ public class JoinOperator implements Operator {
 
     public Operator getRightChild() {
         return rightChild;
+    }
+
+    @Override
+    public void setLeftChild(Operator leftChild) {
+        this.leftChild = leftChild;
+    }
+
+    @Override
+    public void setRightChild(Operator rightChild) {
+        this.rightChild = rightChild;
     }
 
     public Map<String, PrimitiveValue> getLeftChildTuple() {

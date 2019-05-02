@@ -5,15 +5,14 @@ import net.sf.jsqlparser.eval.Eval;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
+import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
 import operators.*;
 import operators.joins.IndexScanOperator;
 import operators.joins.JoinOperator;
 import preCompute.ViewBuilder;
+import utils.PrimValComp;
 import utils.Utils;
 
 import java.sql.SQLException;
@@ -21,8 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.*;
 
+import static utils.Utils.getRangeExpressions;
+
 public class QueryOptimizer extends Eval {
-    List<String> columnsInExp;
+    List<String> columnsInExp = new ArrayList<String>();
 
     public Operator getOptimizedOperator(Operator operator) {
 
@@ -156,24 +157,27 @@ public class QueryOptimizer extends Eval {
             }
             colsRefered.addAll(columnsInExp);
 
-        } else if (operator instanceof JoinOperator) {
-            JoinOperator joinOperator = (JoinOperator) operator;
-            try {
-                eval(joinOperator.getJoin().getOnExpression());
-            } catch (Exception e) {
+        } else if (operator instanceof DoubleChildOperator) {
+            DoubleChildOperator doubleChildOperator = (DoubleChildOperator) operator;
+            if (doubleChildOperator instanceof JoinOperator) {
+                JoinOperator joinOperator = (JoinOperator) operator;
+                try {
+                    eval(joinOperator.getJoin().getOnExpression());
+                } catch (Exception e) {
+                }
+                colsRefered.addAll(columnsInExp);
             }
-            colsRefered.addAll(columnsInExp);
-            Operator leftChild = joinOperator.getLeftChild();
-            Operator rightChild = joinOperator.getRightChild();
+            Operator leftChild = doubleChildOperator.getLeftChild();
+            Operator rightChild = doubleChildOperator.getRightChild();
             replaceTableScans(colsRefered, leftChild);
             replaceTableScans(colsRefered, rightChild);
             if (leftChild instanceof TableScan) {
                 TableScan tableScan = (TableScan) leftChild;
-                joinOperator.setChild("left", new ProjectedTableScan(colsRefered, tableScan.getTableName(), tableScan.isView()));
+                doubleChildOperator.setLeftChild(new ProjectedTableScan(colsRefered, tableScan.getTableName(), tableScan.isView()));
             }
             if (rightChild instanceof TableScan) {
                 TableScan tableScan = (TableScan) rightChild;
-                joinOperator.setChild("right", new ProjectedTableScan(colsRefered, tableScan.getTableName(), tableScan.isView()));
+                doubleChildOperator.setRightChild(new ProjectedTableScan(colsRefered, tableScan.getTableName(), tableScan.isView()));
             }
         } else if (operator instanceof TableScan) {
             return;
@@ -484,22 +488,107 @@ public class QueryOptimizer extends Eval {
     public Operator replaceWithSelectionViews(Operator root) {
         if (root instanceof SelectionOperator) {
             SelectionOperator selectionOperator = (SelectionOperator) root;
+            selectionOperator = getUnionedSelectionOperator(selectionOperator);
             Operator selectionChild = selectionOperator.getChild();
             if (selectionChild instanceof TableScan) {
                 TableScan view = getMatchingSelectionView(selectionOperator, (TableScan) selectionChild);
                 if (view != null) {
                     selectionOperator.setChild(view);
                 }
+                return root;
             }
-        } else if (root instanceof SingleChildOperator) {
+
+        }
+        if (root instanceof SingleChildOperator) {
             SingleChildOperator singleChildOperator = (SingleChildOperator) root;
             singleChildOperator.setChild(replaceWithSelectionViews(singleChildOperator.getChild()));
-        } else if (root instanceof JoinOperator) {
-            JoinOperator joinOperator = (JoinOperator) root;
-            joinOperator.setChild("left", replaceWithSelectionViews(joinOperator.getLeftChild()));
-            joinOperator.setChild("right", replaceWithSelectionViews(joinOperator.getRightChild()));
+        } else if (root instanceof DoubleChildOperator) {
+            DoubleChildOperator doubleChildOperator = (DoubleChildOperator) root;
+            doubleChildOperator.setLeftChild(replaceWithSelectionViews(doubleChildOperator.getLeftChild()));
+            doubleChildOperator.setRightChild(replaceWithSelectionViews(doubleChildOperator.getRightChild()));
         }
         return root;
+    }
+
+    private SelectionOperator getUnionedSelectionOperator(SelectionOperator selectionOperator) {
+        if (!(selectionOperator.getChild() instanceof TableScan)) {
+            return selectionOperator;
+        }
+        List<Expression> andExps = new ArrayList<Expression>();
+        populateAndExpressions(selectionOperator.getWhereExp(), andExps);
+        List<Expression> rangeColExpressions = new ArrayList<Expression>();
+        for (String colName : Utils.rangeScannedCols) {
+            for (Expression expression : andExps) {
+                if (expression.toString().contains(colName)) {
+                    BinaryExpression binaryExpression = (BinaryExpression)expression;
+                    if (isValidRangeScan(binaryExpression)){
+                        rangeColExpressions.add(expression);
+                    }
+
+                }
+                if (rangeColExpressions.size() == 2) {
+                    break;
+                }
+            }
+
+            if (rangeColExpressions.size() > 0) {
+                break;
+            }
+        }
+        andExps.removeAll(rangeColExpressions);
+        BinaryExpression basicExpression;
+        if (rangeColExpressions.size() == 2) {
+            basicExpression = new AndExpression(rangeColExpressions.get(0), rangeColExpressions.get(1));
+        } else if (rangeColExpressions.size() == 1) {
+            basicExpression = (BinaryExpression) rangeColExpressions.get(0);
+        } else {
+            return selectionOperator;
+        }
+        if (basicExpression instanceof EqualsTo || basicExpression instanceof NotEqualsTo){
+            return selectionOperator;
+        }
+        List<Expression> expressions = Utils.getRangeExpressions(basicExpression);
+        int numExps = expressions.size();
+        if (numExps == 1) {
+            return selectionOperator;
+        }
+        Expression remainingWhereExp =  null;
+        if (andExps.size() != 0){
+          remainingWhereExp = constructByAnding(andExps);
+        }
+        TableScan selectionChild = (TableScan) selectionOperator.getChild();
+        List<SelectionOperator> selectionOperators = new ArrayList<SelectionOperator>();
+        for (Expression expression : expressions) {
+            Expression selectWhereExp =  expression;
+            if (remainingWhereExp != null){
+               selectWhereExp = new AndExpression(selectWhereExp,remainingWhereExp);
+            }
+            SelectionOperator newSelectOperator = new SelectionOperator(selectWhereExp, selectionChild);
+            selectionOperators.add(newSelectOperator);
+        }
+        UnionOperator unionOperator = constructByUnioning(selectionOperators);
+        selectionOperator.setChild(unionOperator);
+        return selectionOperator;
+    }
+
+    private boolean isValidRangeScan(BinaryExpression binaryExpression) {
+        Expression leftExpression = binaryExpression.getLeftExpression();
+        Expression rightExpression = binaryExpression.getRightExpression();
+        if (!(leftExpression instanceof  Column)){
+            return false;
+        }
+        if (!(rightExpression instanceof Function)){
+            return false;
+        }
+        return true;
+    }
+
+    private UnionOperator constructByUnioning(List<SelectionOperator> selectionOperators) {
+        UnionOperator unionOperator = new UnionOperator(selectionOperators.get(0), selectionOperators.get(1));
+        for (int i = 3; i < selectionOperators.size(); i++) {
+            unionOperator = new UnionOperator(unionOperator, selectionOperators.get(i));
+        }
+        return unionOperator;
     }
 
     private TableScan getMatchingSelectionView(SelectionOperator selectionOperator, TableScan selectionChild) {
@@ -551,6 +640,97 @@ public class QueryOptimizer extends Eval {
         String selectExpressionAsRawStr = ViewBuilder.getExpressionAsRawString(selectBinaryExp).replaceAll(" ", "");
         if (viewExpressionAsRawStr.equalsIgnoreCase(selectExpressionAsRawStr)) {
             return true;
+        }
+        Expression selectLeft = selectBinaryExp.getLeftExpression();
+        Expression selectRight = selectBinaryExp.getRightExpression();
+        Expression viewLeft = viewBinaryExpression.getLeftExpression();
+        Expression viewRight = viewBinaryExpression.getRightExpression();
+        if (!(selectLeft instanceof Column) || !(viewLeft instanceof Column)) {
+            return false;
+        }
+        if (!checkIfSameTypesNonCols(selectRight, viewRight)) {
+            return false;
+        }
+        if (selectBinaryExp instanceof MinorThan) {
+            return isThisSelectImplying((MinorThan) selectBinaryExp, viewBinaryExpression);
+        } else if (selectBinaryExp instanceof MinorThanEquals) {
+            return isThisSelectImplying((MinorThanEquals) selectBinaryExp, viewBinaryExpression);
+        } else if (selectBinaryExp instanceof GreaterThan) {
+            return isThisSelectImplying((GreaterThan) selectBinaryExp, viewBinaryExpression);
+        } else if (selectBinaryExp instanceof GreaterThanEquals) {
+            return isThisSelectImplying((GreaterThanEquals) selectBinaryExp, viewBinaryExpression);
+        } else if (selectBinaryExp instanceof EqualsTo) {
+            return isThisSelectImplying((EqualsTo) selectBinaryExp, viewBinaryExpression);
+        }
+        return false;
+    }
+
+    private boolean checkIfSameTypesNonCols(Expression exp1, Expression exp2) {
+        return ((exp1 instanceof Function) && (exp2 instanceof Function)) || ((exp1 instanceof PrimitiveValue) && (exp2 instanceof PrimitiveValue));
+    }
+
+    private boolean isThisSelectImplying(EqualsTo selectBinaryExp, BinaryExpression viewBinaryExpression) {
+        Expression viewRightExp = viewBinaryExpression.getRightExpression();
+        Expression selectRightExp = selectBinaryExp.getRightExpression();
+        PrimValComp primValComp = new PrimValComp();
+        if (viewBinaryExpression instanceof EqualsTo) {
+            return primValComp.isEqualTo(selectRightExp, viewRightExp);
+        } else if (viewBinaryExpression instanceof GreaterThan) {
+            return primValComp.isGreaterThan(selectRightExp, viewRightExp);
+        } else if (viewBinaryExpression instanceof GreaterThanEquals) {
+            return primValComp.isGreaterThanEqual(selectRightExp, viewRightExp);
+        } else if (viewBinaryExpression instanceof MinorThan) {
+            return primValComp.isMinorThan(selectRightExp, viewRightExp);
+        } else if (viewBinaryExpression instanceof MinorThanEquals) {
+            return primValComp.isMinorThanEqual(selectRightExp, viewRightExp);
+        } else {
+            return false;
+        }
+    }
+
+    private boolean isThisSelectImplying(MinorThan selectBinaryExp, BinaryExpression viewBinaryExpression) {
+        PrimValComp primValComp = new PrimValComp();
+        Expression viewRightExp = viewBinaryExpression.getRightExpression();
+        Expression selectRightExp = selectBinaryExp.getRightExpression();
+        if (viewBinaryExpression instanceof MinorThanEquals || viewBinaryExpression instanceof MinorThan) {
+            return primValComp.isGreaterThanEqual(viewRightExp, selectRightExp);
+        }
+        return false;
+
+    }
+
+    private boolean isThisSelectImplying(MinorThanEquals selectBinaryExp, BinaryExpression viewBinaryExpression) {
+        Expression viewRightExp = viewBinaryExpression.getRightExpression();
+        Expression selectRightExp = selectBinaryExp.getRightExpression();
+        PrimValComp primValComp = new PrimValComp();
+        if (viewBinaryExpression instanceof MinorThan) {
+            return primValComp.isGreaterThan(viewRightExp, selectRightExp);
+        } else if (viewBinaryExpression instanceof MinorThanEquals) {
+            return primValComp.isGreaterThanEqual(viewRightExp, selectRightExp);
+
+        }
+        return false;
+
+    }
+
+    private boolean isThisSelectImplying(GreaterThan selectBinaryExp, BinaryExpression viewBinaryExpression) {
+        Expression viewRightExp = viewBinaryExpression.getRightExpression();
+        Expression selectRightExp = selectBinaryExp.getRightExpression();
+        PrimValComp primValComp = new PrimValComp();
+        if (viewBinaryExpression instanceof GreaterThanEquals || viewBinaryExpression instanceof GreaterThan) {
+            return primValComp.isMinorThanEqual(viewRightExp, selectRightExp);
+        }
+        return false;
+    }
+
+    private boolean isThisSelectImplying(GreaterThanEquals selectBinaryExp, BinaryExpression viewBinaryExpression) {
+        Expression viewRightExp = viewBinaryExpression.getRightExpression();
+        Expression selectRightExp = selectBinaryExp.getRightExpression();
+        PrimValComp primValComp = new PrimValComp();
+        if (viewBinaryExpression instanceof GreaterThan) {
+            return primValComp.isMinorThan(viewRightExp, selectRightExp);
+        } else if (viewBinaryExpression instanceof GreaterThanEquals) {
+            return primValComp.isMinorThanEqual(viewRightExp, selectRightExp);
         }
         return false;
 
