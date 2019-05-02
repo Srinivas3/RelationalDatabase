@@ -13,6 +13,7 @@ import net.sf.jsqlparser.statement.select.*;
 import operators.*;
 import operators.joins.IndexScanOperator;
 import operators.joins.JoinOperator;
+import preCompute.ViewBuilder;
 import utils.Utils;
 
 import java.sql.SQLException;
@@ -58,7 +59,7 @@ public class QueryOptimizer extends Eval {
             if (viewScan != null) {
                 Expression combinedWhereExp = getCombinedWhereExp(joinOperator);
                 if (combinedWhereExp != null) {
-                    SelectionOperator selectionOperator = new SelectionOperator(combinedWhereExp,viewScan);
+                    SelectionOperator selectionOperator = new SelectionOperator(combinedWhereExp, viewScan);
                     return selectionOperator;
                 } else {
                     return viewScan;
@@ -90,20 +91,18 @@ public class QueryOptimizer extends Eval {
             } else {
                 return getCombinedWhereExp(singleChildOperator.getChild());
             }
-        }
-        else if (operator instanceof  JoinOperator){
-            JoinOperator joinOperator = (JoinOperator)operator;
+        } else if (operator instanceof JoinOperator) {
+            JoinOperator joinOperator = (JoinOperator) operator;
             Expression leftExp = getCombinedWhereExp(joinOperator.getLeftChild());
             Expression rightExp = getCombinedWhereExp(joinOperator.getRightChild());
-            if (leftExp == null){
+            if (leftExp == null) {
                 return rightExp;
             }
-            if(rightExp == null){
+            if (rightExp == null) {
                 return leftExp;
             }
-            return getAndExpression(leftExp,rightExp);
-        }
-        else{
+            return getAndExpression(leftExp, rightExp);
+        } else {
             return null;
         }
     }
@@ -482,4 +481,110 @@ public class QueryOptimizer extends Eval {
     }
 
 
+    public Operator replaceWithSelectionViews(Operator root) {
+        if (root instanceof SelectionOperator) {
+            SelectionOperator selectionOperator = (SelectionOperator) root;
+            Operator selectionChild = selectionOperator.getChild();
+            if (selectionChild instanceof TableScan) {
+                TableScan view = getMatchingSelectionView(selectionOperator, (TableScan) selectionChild);
+                if (view != null) {
+                    selectionOperator.setChild(view);
+                }
+            }
+        } else if (root instanceof SingleChildOperator) {
+            SingleChildOperator singleChildOperator = (SingleChildOperator) root;
+            singleChildOperator.setChild(replaceWithSelectionViews(singleChildOperator.getChild()));
+        } else if (root instanceof JoinOperator) {
+            JoinOperator joinOperator = (JoinOperator) root;
+            joinOperator.setChild("left", replaceWithSelectionViews(joinOperator.getLeftChild()));
+            joinOperator.setChild("right", replaceWithSelectionViews(joinOperator.getRightChild()));
+        }
+        return root;
+    }
+
+    private TableScan getMatchingSelectionView(SelectionOperator selectionOperator, TableScan selectionChild) {
+        List<String> validViews = getSchemaMatchedViews(selectionChild.getSchema());
+        List<String> expressionCompatableViews = new ArrayList<String>();
+        Expression selectExpression = selectionOperator.getWhereExp();
+        for (String viewName : validViews) {
+            Expression viewExpression = Utils.viewToExpression.get(viewName);
+            if (isCompatable(viewExpression, selectExpression)) {
+                expressionCompatableViews.add(viewName);
+            }
+        }
+        if (expressionCompatableViews.size() == 0) {
+            return null;
+        }
+        String viewName = getBestViewToRead(expressionCompatableViews);
+        return new TableScan(viewName);
+    }
+
+    private boolean isCompatable(Expression viewExpression, Expression selectExpression) {
+        List<Expression> viewAndExpressions = new ArrayList<Expression>();
+        List<Expression> selectAndExpressions = new ArrayList<Expression>();
+        populateAndExpressions(viewExpression, viewAndExpressions);
+        populateAndExpressions(selectExpression, selectAndExpressions);
+        for (Expression viewAndExpression : viewAndExpressions) {
+            if (!isAnySelectImplying(selectAndExpressions, viewAndExpression)) {
+                return false;
+            }
+        }
+        return true;
+
+    }
+
+    private boolean isAnySelectImplying(List<Expression> selectAndExpressions, Expression viewAndExpression) {
+        BinaryExpression viewBinaryExpression = (BinaryExpression) viewAndExpression;
+        for (Expression selectAndExpression : selectAndExpressions) {
+            if (selectAndExpression instanceof BinaryExpression) {
+                BinaryExpression selectBinaryExp = (BinaryExpression) selectAndExpression;
+                if (isThisSelectImplying(selectBinaryExp, viewBinaryExpression)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isThisSelectImplying(BinaryExpression selectBinaryExp, BinaryExpression viewBinaryExpression) {
+        String viewExpressionAsRawStr = ViewBuilder.getExpressionAsRawString(viewBinaryExpression).replaceAll(" ", "");
+        String selectExpressionAsRawStr = ViewBuilder.getExpressionAsRawString(selectBinaryExp).replaceAll(" ", "");
+        if (viewExpressionAsRawStr.equalsIgnoreCase(selectExpressionAsRawStr)) {
+            return true;
+        }
+        return false;
+
+    }
+
+
+    private String getBestViewToRead(List<String> expressionCompatableViews) {
+        String minLinesView = expressionCompatableViews.get(0);
+        int minLines = Utils.tableToLines.get(minLinesView);
+        int currNumLines;
+        for (String viewName : expressionCompatableViews) {
+            currNumLines = Utils.tableToLines.get(viewName);
+            if (currNumLines < minLines) {
+                minLines = currNumLines;
+                minLinesView = viewName;
+            }
+        }
+        return minLinesView;
+
+    }
+
+    private List<String> getSchemaMatchedViews(Map<String, Integer> schema) {
+        List<String> validViews = new ArrayList<String>();
+        Set<String> availableViews = Utils.viewToSchema.keySet();
+        Set<String> tableColNames = schema.keySet();
+        for (String viewName : availableViews) {
+            Map<String, Integer> viewSchema = Utils.viewToSchema.get(viewName);
+            for (String tableColName : tableColNames) {
+                if (viewSchema.containsKey(tableColName)) {
+                    validViews.add(viewName);
+                    break;
+                }
+            }
+        }
+        return validViews;
+    }
 }

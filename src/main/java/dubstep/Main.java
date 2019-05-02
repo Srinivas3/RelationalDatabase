@@ -33,10 +33,6 @@ public class Main {
         long time1 = 0;
         long time2 = 0;
         try {
-            if (is_testMode) {
-                FileInputStream fis = new FileInputStream(new File("nba_queries.txt"));
-                System.setIn(fis);
-            }
             if (args.length > 0) {
                 if (args[0].equalsIgnoreCase("--in-mem")) {
                     Utils.inMemoryMode = true;
@@ -55,7 +51,7 @@ public class Main {
             int createStmnts = 0;
             while ((statement = parser.Statement()) != null) {
                 if (statement instanceof Select) {
-                    statements.add(statement);
+
                     if (!isPhaseOne && isFirstSelect) {
                         PreComputeLoader preComputeLoader = new PreComputeLoader();
                         preComputeLoader.loadSavedState();
@@ -64,11 +60,11 @@ public class Main {
                     long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
+                    root = queryOptimizer.replaceWithSelectionViews(root);
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
                     long endTime = System.currentTimeMillis();
-                    //bufferedWriter.write("Execution time for query " + String.valueOf(endTime-startTime));
-                    //execution_times.add(endTime - startTime);
+//                    bufferedWriter.write("Execution time for query " + String.valueOf(endTime-startTime));
                 } else if (statement instanceof CreateTable) {
                     if (!areDirsCreated) {
                         createDirs();
@@ -83,18 +79,10 @@ public class Main {
                     if (createStmnts == 8){
                         new ViewBuilder().buildViews();
                         time2 = System.currentTimeMillis();
-                    //    System.out.println("time for precompute:" + String.valueOf((time2-time1)/1000));
+                        System.out.println("time for precompute:" + String.valueOf((time2-time1)/1000));
                     }
                 } else {
                     bufferedWriter.write("Invalid Query");
-                }
-                if(statements.size() > 100){
-                    if (isPhaseOne){
-                        saveStatements(statements);
-                    }
-                    else{
-                        printStatements(statements,bufferedWriter);
-                    }
                 }
                 bufferedWriter.write("$>" + "\n");
                 bufferedWriter.flush();
@@ -222,11 +210,9 @@ public class Main {
     }
 
     public static void displayOutput(Operator operator, BufferedWriter bufferedWriter) throws Exception {
-
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
-        long time1 = System.currentTimeMillis();
         while ((tuple = operator.next()) != null) {
             StringBuilder sb = new StringBuilder();
             Set<String> keySet = tuple.keySet();
@@ -239,16 +225,13 @@ public class Main {
                 i += 1;
             }
 //            bufferedWriter.write(String.valueOf(counter));
-//           bufferedWriter.write(". ");
+//            bufferedWriter.write(". ");
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
-//
-//        long time2 = System.currentTimeMillis();
-
-     //  printOperatorTree(operator,bufferedWriter);
+//        printOperatorTree(operator,bufferedWriter);
         bufferedWriter.flush();
-        //System.out.println(time2-time1);
+
     }
 
 
@@ -299,6 +282,10 @@ public class Main {
             TableScan tableScan = (TableScan) operator;
             bufferedWriter.write("TableScan Operator on table " + tableScan.getTableName());
             bufferedWriter.newLine();
+            if (tableScan.isView()){
+                bufferedWriter.write("View Expression " + Utils.viewToExpression.get(tableScan.getTableName()).toString());
+                bufferedWriter.newLine();
+            }
         }
         if (operator instanceof ProjectedTableScan){
             ProjectedTableScan projectedTableScan = (ProjectedTableScan)operator;

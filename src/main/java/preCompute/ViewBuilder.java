@@ -1,9 +1,7 @@
 package preCompute;
 
 import dubstep.Main;
-import net.sf.jsqlparser.expression.DateValue;
-import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.PrimitiveValue;
+import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
@@ -45,6 +43,7 @@ public class ViewBuilder {
 
     public void buildViews() {
         buildLineItemViews();
+        buildOrderViews();
         /*
         addQueries();
         writeQueriesToDisk();
@@ -69,7 +68,7 @@ public class ViewBuilder {
             File viewExpFile = new File(Constants.VIEW_EXPS_DIR, viewName);
             try {
                 BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(viewExpFile));
-                bufferedWriter.write(queryPrefix + Utils.viewToExpression.get(viewName).toString() + ";");
+                bufferedWriter.write(queryPrefix + getExpressionAsRawString(Utils.viewToExpression.get(viewName)) + ";");
                 bufferedWriter.newLine();
                 bufferedWriter.flush();
                 bufferedWriter.close();
@@ -79,11 +78,35 @@ public class ViewBuilder {
         }
     }
 
+    public static String getExpressionAsRawString(Expression expression) {
+        if (expression instanceof  PrimitiveValue){
+            if (expression instanceof  DateValue){
+                DateValue dateValue  = (DateValue)expression;
+                return "DATE(' "   + dateValue.toRawString() + "')";
+            }
+            return ((PrimitiveValue) expression).toRawString();
+        }
+        if (expression instanceof Function){
+            Function function = (Function)expression;
+            return function.toString();
+        }
+        if (expression instanceof  Column){
+            return expression.toString();
+        }
+        BinaryExpression binaryExpression = (BinaryExpression)expression;
+        String leftExpAsRawString = getExpressionAsRawString(binaryExpression.getLeftExpression());
+        String rightExpAsRawString = getExpressionAsRawString(binaryExpression.getRightExpression());
+        return leftExpAsRawString + " " + binaryExpression.getStringExpression() + " " + rightExpAsRawString;
+    }
+
     private void buildLineItemViews() {
         buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", "");
         String whereFilter = " WHERE LINEITEM.COMMITDATE < LINEITEM.RECEIPTDATE AND LINEITEM.SHIPDATE < LINEITEM.COMMITDATE";
         buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
 
+    }
+    private void buildOrderViews(){
+        buildDateViews("ORDERS", "ORDERS.ORDERDATE", "");
     }
 
     private Expression getCommitReceiptExp() {
@@ -127,8 +150,12 @@ public class ViewBuilder {
             preProcessor.flushAndClose(partitionToStreams.get(dateValStr));
         }
         saveViewColDefs(operator.getSchema(), viewNames);
+        for (String viewName: viewNames){
+            saveViewToSchema(viewName,operator);
+        }
         Expression additionalWhereExp = getAdditionalWhereExp((ProjectionOperator) operator);
         insertViewToExpression(dateToViewName, additionalWhereExp, dateTableColName);
+
     }
 
     private void insertViewToExpression(TreeMap<String, String> dateToViewName, Expression additionalWhereExp, String tableColName) {
