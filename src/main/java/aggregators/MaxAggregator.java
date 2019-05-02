@@ -3,6 +3,7 @@ package aggregators;
 import net.sf.jsqlparser.expression.DoubleValue;
 import net.sf.jsqlparser.expression.LongValue;
 import net.sf.jsqlparser.expression.PrimitiveValue;
+import net.sf.jsqlparser.expression.StringValue;
 import net.sf.jsqlparser.schema.PrimitiveType;
 
 public class MaxAggregator implements Aggregator {
@@ -39,6 +40,9 @@ public class MaxAggregator implements Aggregator {
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
+            }else {
+                String a = accum.toRawString().compareTo(next.toRawString()) > 0 ? accum.toRawString() : next.toRawString();
+                accum = new StringValue(a);
             }
 
         }

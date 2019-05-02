@@ -237,7 +237,7 @@ public class PreProcessor {
         return openDataOutputStreams(tableColNames, tableName);
     }
 
-    public DataOutputStream[] openDataOutputStreams(List<String> tableColNames, String tableName) {
+    public DataOutputStream[] openDataOutputStreams(Collection<String> tableColNames, String tableName) {
 
         String tableColDir = Constants.COLUMN_STORE_DIR + "/" + tableName;
         new File(tableColDir).mkdir();

@@ -74,7 +74,11 @@ public class TreeBuilder {
 
     public Operator handleFromItem(FromItem fromItem){
         if (fromItem instanceof Table){
-            return new TableScan((Table)fromItem);
+            Table table = (Table)fromItem;
+            if(table.getName().startsWith("view")){
+                return new TableScan(table.getName());
+            }
+            return new TableScan(table);
         }
         else if (fromItem instanceof SubSelect){
             SubSelect subselect = (SubSelect) fromItem;

@@ -116,9 +116,9 @@ public class QueryOptimizer extends Eval {
     }
 
     private TableScan getMatchingJoinView(Map<String, Integer> joinSchema, Join join) {
-        Set<String> joinViewNames = Utils.joinViewToSchema.keySet();
+        Set<String> joinViewNames = Utils.viewToSchema.keySet();
         for (String joinViewName : joinViewNames) {
-            Map<String, Integer> viewSchema = Utils.joinViewToSchema.get(joinViewName);
+            Map<String, Integer> viewSchema = Utils.viewToSchema.get(joinViewName);
             if (checkIfSchemasMatch(viewSchema, joinSchema)) {
                 return new TableScan(joinViewName);
             }

@@ -35,7 +35,6 @@ public class TableScan implements Operator {
     }
 
     private void constructorCommons() {
-
         this.filePath = "data/" + table.getName() + format;
         this.colDefs = Utils.nameToColDefs.get(table.getName());
         tuple = new LinkedHashMap<String, PrimitiveValue>();

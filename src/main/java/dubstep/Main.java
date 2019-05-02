@@ -18,6 +18,7 @@ import preCompute.PreComputeLoader;
 import preCompute.PreProcessor;
 import preCompute.ViewBuilder;
 import utils.Constants;
+import utils.TimeTester;
 import utils.Utils;
 
 public class Main {
@@ -28,6 +29,9 @@ public class Main {
 
 
     public static void main(String args[]) throws ParseException, FileNotFoundException {
+      //  new TimeTester().timeTester();
+        long time1 = 0;
+        long time2 = 0;
         try {
             if (is_testMode) {
                 FileInputStream fis = new FileInputStream(new File("nba_queries.txt"));
@@ -60,7 +64,6 @@ public class Main {
                     long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
-                    root = queryOptimizer.replaceWithJoinViews(root);
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
                     long endTime = System.currentTimeMillis();
@@ -70,6 +73,7 @@ public class Main {
                     if (!areDirsCreated) {
                         createDirs();
                         areDirsCreated = true;
+                        time1 = System.currentTimeMillis();
                     }
                     CreateTable createTableStatement = (CreateTable) statement;
                     PreProcessor preProcessor = new PreProcessor(createTableStatement);
@@ -78,6 +82,8 @@ public class Main {
                     createStmnts++;
                     if (createStmnts == 8){
                         new ViewBuilder().buildViews();
+                        time2 = System.currentTimeMillis();
+                    //    System.out.println("time for precompute:" + String.valueOf((time2-time1)/1000));
                     }
                 } else {
                     bufferedWriter.write("Invalid Query");
@@ -103,6 +109,14 @@ public class Main {
             bufferedWriter.close();
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private static void printViewExps() {
+        Set<String> viewNames = Utils.viewToExpression.keySet();
+        for(String viewName: viewNames){
+            System.out.println("viewName: " + viewName);
+            System.out.println("View Expression: " + Utils.viewToExpression.get(viewName).toString());
         }
     }
 
@@ -156,12 +170,13 @@ public class Main {
     }
 
     private static void createDirs() {
-        new File(Constants.COL_DEFS_DIR).mkdir();
-        new File(Constants.LINES_DIR).mkdir();
-        new File(Constants.COMPRESSED_TABLES_DIR).mkdir();
-        new File(Constants.COLUMN_STORE_DIR).mkdir();
-        new File(Constants.COLUMN_BYTES_DIR).mkdir();
-        new File(Constants.VIEW_SCHEMA_DIR).mkdir();
+        new File(Constants.COL_DEFS_DIR).mkdirs();
+        new File(Constants.LINES_DIR).mkdirs();
+        new File(Constants.COMPRESSED_TABLES_DIR).mkdirs();
+        new File(Constants.COLUMN_STORE_DIR).mkdirs();
+        new File(Constants.COLUMN_BYTES_DIR).mkdirs();
+        new File(Constants.VIEW_SCHEMA_DIR).mkdirs();
+        new File(Constants.VIEW_EXPS_DIR).mkdirs();
     }
 
 //    private static void debugCode() {
@@ -223,14 +238,15 @@ public class Main {
 
                 i += 1;
             }
-            //bufferedWriter.write(counter);
-           // bufferedWriter.write(". ");
+//            bufferedWriter.write(String.valueOf(counter));
+//           bufferedWriter.write(". ");
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
+//
+//        long time2 = System.currentTimeMillis();
 
-        //long time2 = System.currentTimeMillis();
-       // printOperatorTree(operator,bufferedWriter);
+     //  printOperatorTree(operator,bufferedWriter);
         bufferedWriter.flush();
         //System.out.println(time2-time1);
     }
