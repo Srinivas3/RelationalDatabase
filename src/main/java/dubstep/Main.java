@@ -230,7 +230,7 @@ public class Main {
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
-//        printOperatorTree(operator,bufferedWriter);
+//      printOperatorTree(operator,bufferedWriter);
         bufferedWriter.flush();
 
     }

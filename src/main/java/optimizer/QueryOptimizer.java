@@ -585,7 +585,7 @@ public class QueryOptimizer extends Eval {
 
     private UnionOperator constructByUnioning(List<SelectionOperator> selectionOperators) {
         UnionOperator unionOperator = new UnionOperator(selectionOperators.get(0), selectionOperators.get(1));
-        for (int i = 3; i < selectionOperators.size(); i++) {
+        for (int i = 2; i < selectionOperators.size(); i++) {
             unionOperator = new UnionOperator(unionOperator, selectionOperators.get(i));
         }
         return unionOperator;
