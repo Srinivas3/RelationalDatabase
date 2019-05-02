@@ -7,10 +7,12 @@ import java.util.Map;
 public class UnionOperator implements Operator,DoubleChildOperator {
     private Operator leftOperator;
     private Operator rightOperator;
+    private boolean isLeftRight;
 
     public UnionOperator(Operator leftOperator, Operator rightOperator) {
         this.leftOperator = leftOperator;
         this.rightOperator = rightOperator;
+        isLeftRight = false;
     }
 
     public Map<String, PrimitiveValue> next() {

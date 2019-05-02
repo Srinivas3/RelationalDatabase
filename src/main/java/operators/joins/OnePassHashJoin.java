@@ -34,16 +34,19 @@ public class OnePassHashJoin implements  JoinAlgorithm{
             advanceRight();
             isFirstCall = false;
         }
-        if (leftBucketItr != null && leftBucketItr.hasNext()) {
-            List<PrimitiveValue> matchedLeftTupleSerialized = leftBucketItr.next();
-            Map<String, PrimitiveValue> matchedLeftTuple = Utils.convertToMap(matchedLeftTupleSerialized, joinOperator.getLeftIdxToColName());
-            return joinOperator.merge(matchedLeftTuple, rightChildTuple);
-        } else {
-            advanceRight();
-            if (rightChildTuple == null)
-                return null;
-            return getNextValue();
+        while(true){
+            if (leftBucketItr != null && leftBucketItr.hasNext()) {
+                List<PrimitiveValue> matchedLeftTupleSerialized = leftBucketItr.next();
+                Map<String, PrimitiveValue> matchedLeftTuple = Utils.convertToMap(matchedLeftTupleSerialized, joinOperator.getLeftIdxToColName());
+                return joinOperator.merge(matchedLeftTuple, rightChildTuple);
+            } else {
+                advanceRight();
+                if (rightChildTuple == null)
+                    return null;
+//            return getNextValue();
+            }
         }
+
     }
 
     private void hashLeftTuples() {
