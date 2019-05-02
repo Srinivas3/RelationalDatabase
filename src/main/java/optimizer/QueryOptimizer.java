@@ -647,6 +647,13 @@ public class QueryOptimizer extends Eval {
         Expression viewRight = viewBinaryExpression.getRightExpression();
         if (!(selectLeft instanceof Column) || !(viewLeft instanceof Column)) {
             return false;
+        } else {
+            Column viewColumn = (Column)viewLeft;
+            Column selectColumn = (Column)selectLeft;
+            if(!viewColumn.toString().equalsIgnoreCase(selectLeft.toString())){
+                return false;
+            }
+
         }
         if (!checkIfSameTypesNonCols(selectRight, viewRight)) {
             return false;
