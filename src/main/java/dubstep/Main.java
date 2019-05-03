@@ -29,7 +29,7 @@ public class Main {
 
 
     public static void main(String args[]) throws ParseException, FileNotFoundException {
-      //  new TimeTester().timeTester();
+        //  new TimeTester().timeTester();
         Utils.populateRangeScanData();
         long time1 = 0;
         long time2 = 0;
@@ -44,7 +44,6 @@ public class Main {
                 Utils.inMemoryMode = true;
             }
             System.out.println("$>");
-            List<Long> execution_times = new ArrayList<Long>();
             CCJSqlParser parser = new CCJSqlParser(System.in);
             Statement statement;
             List<Statement> statements = new ArrayList<Statement>();
@@ -61,38 +60,29 @@ public class Main {
                     long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
-                    root = queryOptimizer.replaceWithSelectionViews(root);
+                     root = queryOptimizer.replaceWithSelectionViews(root);
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
                     long endTime = System.currentTimeMillis();
-//                    bufferedWriter.write("Execution time for query " + String.valueOf(endTime-startTime));
+//                    bufferedWriter.write("Execution time for query " + String.valueOf(endTime - startTime));
+                    bufferedWriter.flush();
                 } else if (statement instanceof CreateTable) {
                     if (!areDirsCreated) {
                         createDirs();
                         areDirsCreated = true;
-                        time1 = System.currentTimeMillis();
                     }
                     CreateTable createTableStatement = (CreateTable) statement;
                     PreProcessor preProcessor = new PreProcessor(createTableStatement);
                     preProcessor.preCompute();
                     isPhaseOne = true;
                     createStmnts++;
-                    if (createStmnts == 8){
+                    if (createStmnts == 8) {
                         new ViewBuilder().buildViews();
-                        time2 = System.currentTimeMillis();
-//                        System.out.println("time for precompute:" + String.valueOf((time2-time1)/1000));
                     }
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
                 bufferedWriter.write("$>" + "\n");
-                bufferedWriter.flush();
-            }
-            if (is_testMode) {
-                bufferedWriter.write("The execution times are: ");
-                for (Long execution_time : execution_times) {
-                    bufferedWriter.write(String.valueOf(execution_time / 1000) + " ");
-                }
                 bufferedWriter.flush();
             }
             bufferedWriter.close();
@@ -103,29 +93,28 @@ public class Main {
 
     private static void printViewExps() {
         Set<String> viewNames = Utils.viewToExpression.keySet();
-        for(String viewName: viewNames){
+        for (String viewName : viewNames) {
             System.out.println("viewName: " + viewName);
             System.out.println("View Expression: " + Utils.viewToExpression.get(viewName).toString());
         }
     }
 
     private static void printStatements(List<Statement> statements, BufferedWriter bufferedWriter) {
-        try{
+        try {
             bufferedWriter.write("Phase#1 statements:");
             bufferedWriter.newLine();
             File phaseOneStatsFile = new File(Constants.PHASE_ONE_STATEMENTS_FILE);
             BufferedReader bufferedReader = new BufferedReader(new FileReader(phaseOneStatsFile));
             String line;
-            while((line = bufferedReader.readLine())!= null){
+            while ((line = bufferedReader.readLine()) != null) {
                 bufferedWriter.write(line);
                 bufferedWriter.newLine();
             }
-            for(Statement statement: statements){
+            for (Statement statement : statements) {
                 bufferedWriter.write(statements.toString());
                 bufferedWriter.newLine();
             }
-        }
-        catch(Exception e){
+        } catch (Exception e) {
 
         }
 
@@ -134,8 +123,8 @@ public class Main {
     private static void saveStatements(List<Statement> statements) {
         File statmentsFile = new File(Constants.PHASE_ONE_STATEMENTS_FILE);
         try {
-            BufferedWriter bufferedWriter  = new BufferedWriter(new FileWriter(statmentsFile));
-            for(Statement statement: statements){
+            BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(statmentsFile));
+            for (Statement statement : statements) {
                 bufferedWriter.write(statement.toString());
                 bufferedWriter.newLine();
             }
@@ -150,7 +139,7 @@ public class Main {
     private static void printCacheState(BufferedWriter bufferedWriter) throws Exception {
         bufferedWriter.write("Start printing cache state");
         bufferedWriter.newLine();
-        for (String tableColName: Utils.cachedCols.keySet()){
+        for (String tableColName : Utils.cachedCols.keySet()) {
             bufferedWriter.write(tableColName + " number of bytes " + Utils.cachedCols.get(tableColName).length);
             bufferedWriter.newLine();
         }
@@ -230,12 +219,10 @@ public class Main {
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
-//        printOperatorTree(operator,bufferedWriter);
+//        printOperatorTree(operator, bufferedWriter);
         bufferedWriter.flush();
 
     }
-
-
 
 
     public static void printSchema(Map<String, Integer> schema, BufferedWriter bufferedWriter) throws Exception {
@@ -277,15 +264,15 @@ public class Main {
             bufferedWriter.newLine();
             printOperatorTree(joinOperator.getRightChild(), bufferedWriter);
         }
-        if (operator instanceof UnionOperator){
-            UnionOperator unionOperator = (UnionOperator)operator;
+        if (operator instanceof UnionOperator) {
+            UnionOperator unionOperator = (UnionOperator) operator;
             bufferedWriter.write("Union Operator");
             bufferedWriter.newLine();
             bufferedWriter.write("Left Child: ");
             bufferedWriter.newLine();
-            printOperatorTree(unionOperator.getLeftChild(),bufferedWriter);
+            printOperatorTree(unionOperator.getLeftChild(), bufferedWriter);
             bufferedWriter.write("Right Child");
-            printOperatorTree(unionOperator.getRightChild(),bufferedWriter);
+            printOperatorTree(unionOperator.getRightChild(), bufferedWriter);
             bufferedWriter.newLine();
         }
 
@@ -294,18 +281,18 @@ public class Main {
             TableScan tableScan = (TableScan) operator;
             bufferedWriter.write("TableScan Operator on table " + tableScan.getTableName());
             bufferedWriter.newLine();
-            if (tableScan.isView()){
+            if (tableScan.isView()) {
                 bufferedWriter.write("View Expression " + Utils.viewToExpression.get(tableScan.getTableName()).toString());
                 bufferedWriter.newLine();
             }
         }
-        if (operator instanceof ProjectedTableScan){
-            ProjectedTableScan projectedTableScan = (ProjectedTableScan)operator;
+        if (operator instanceof ProjectedTableScan) {
+            ProjectedTableScan projectedTableScan = (ProjectedTableScan) operator;
             bufferedWriter.write("Projected table scan operator on table " + projectedTableScan.getTableName() + " with schema: ");
             bufferedWriter.newLine();
-            printSchema(projectedTableScan.getSchema(),bufferedWriter);
+            printSchema(projectedTableScan.getSchema(), bufferedWriter);
             bufferedWriter.newLine();
-            if (projectedTableScan.isView()){
+            if (projectedTableScan.isView()) {
                 bufferedWriter.write("View Expression is " + Utils.viewToExpression.get(projectedTableScan.getTableName()));
             }
             bufferedWriter.newLine();
@@ -322,25 +309,25 @@ public class Main {
             bufferedWriter.newLine();
             printOperatorTree(diskCacheOperator.getChild(), bufferedWriter);
         }
-        if (operator instanceof GroupByOperator){
+        if (operator instanceof GroupByOperator) {
             GroupByOperator groupByOperator = (GroupByOperator) operator;
             bufferedWriter.write("group by operator with schema:");
             bufferedWriter.newLine();
-            printSchema(groupByOperator.getSchema(),bufferedWriter);
+            printSchema(groupByOperator.getSchema(), bufferedWriter);
             bufferedWriter.newLine();
-            printOperatorTree(((GroupByOperator) operator).getChild(),bufferedWriter);
+            printOperatorTree(((GroupByOperator) operator).getChild(), bufferedWriter);
         }
-        if (operator instanceof  OrderByOperator){
-            OrderByOperator orderByOperator = (OrderByOperator)operator;
+        if (operator instanceof OrderByOperator) {
+            OrderByOperator orderByOperator = (OrderByOperator) operator;
             bufferedWriter.write("orderby operator");
             bufferedWriter.newLine();
-            printOperatorTree(orderByOperator.getChild(),bufferedWriter);
+            printOperatorTree(orderByOperator.getChild(), bufferedWriter);
         }
-        if (operator instanceof LimitOperator){
-            LimitOperator limitOperator = (LimitOperator)operator;
+        if (operator instanceof LimitOperator) {
+            LimitOperator limitOperator = (LimitOperator) operator;
             bufferedWriter.write("limit operator");
             bufferedWriter.newLine();
-            printOperatorTree(limitOperator.getChild(),bufferedWriter);
+            printOperatorTree(limitOperator.getChild(), bufferedWriter);
         }
 
     }

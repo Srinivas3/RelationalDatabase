@@ -105,8 +105,8 @@ public class ViewBuilder {
         buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
         String[] shipmodes = getShipmodes();
         for (String shipmode : shipmodes) {
-            String shipmodeFilter = " AND LINEITEM.SHIPMODE = " + shipmode;
-         //   buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
+            String shipmodeFilter = " WHERE LINEITEM.SHIPMODE = " + shipmode;
+//            buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
         }
     }
 

@@ -549,6 +549,9 @@ public class QueryOptimizer extends Eval {
             return selectionOperator;
         }
         List<Expression> expressions = Utils.getRangeExpressions(basicExpression);
+        if (expressions == null){
+            return selectionOperator;
+        }
         int numExps = expressions.size();
         if (numExps == 1) {
             return selectionOperator;

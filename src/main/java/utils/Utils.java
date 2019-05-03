@@ -53,8 +53,8 @@ public class Utils {
         } else {
             DateValue datePrimitiveVal = getDateValueFromFunction((Function) greaterThanEqualsExp.getRightExpression());
             currMinDate = getCurrNewYear(datePrimitiveVal);
-            if (currMinDate.compareTo(Constants.MIN_DATE_STR) < 0){
-                currMinDate  = Constants.MIN_DATE_STR;
+            if (currMinDate.compareTo(Constants.MIN_DATE_STR) < 0) {
+                currMinDate = Constants.MIN_DATE_STR;
             }
         }
         if (minorThanExp == null) {
@@ -62,9 +62,12 @@ public class Utils {
         } else {
             DateValue datePrimitiveVal = getDateValueFromFunction((Function) minorThanExp.getRightExpression());
             currMaxDate = getNearestNextNewYear(datePrimitiveVal);
-            if (currMaxDate.compareTo(Constants.MAX_DATE_STR) > 0){
+            if (currMaxDate.compareTo(Constants.MAX_DATE_STR) > 0) {
                 currMaxDate = Constants.MAX_DATE_STR;
             }
+        }
+        if (currMaxDate.equalsIgnoreCase(Constants.MAX_DATE_STR) && currMinDate.equalsIgnoreCase(Constants.MIN_DATE_STR)) {
+            return null;
         }
         List<Expression> rangeExps = new ArrayList<Expression>();
         String runningDate = currMinDate;
@@ -80,24 +83,26 @@ public class Utils {
     }
 
     private static Column getColumn(BinaryExpression basicExpression) {
-        if (basicExpression instanceof AndExpression){
+        if (basicExpression instanceof AndExpression) {
             return getColumn((BinaryExpression) basicExpression.getLeftExpression());
         }
-        if (basicExpression.getLeftExpression() instanceof Column){
-            return (Column)basicExpression.getLeftExpression();
+        if (basicExpression.getLeftExpression() instanceof Column) {
+            return (Column) basicExpression.getLeftExpression();
         }
-        if (basicExpression.getRightExpression() instanceof  Column){
-            return (Column)basicExpression.getRightExpression();
+        if (basicExpression.getRightExpression() instanceof Column) {
+            return (Column) basicExpression.getRightExpression();
         }
 
         return null;
     }
-    private static String getCurrNewYear(DateValue dateValue){
+
+    private static String getCurrNewYear(DateValue dateValue) {
         String[] parts = dateValue.toRawString().split("-");
         String newYear = String.valueOf(Integer.valueOf(parts[0]));
         return newYear + "-01-01";
 
     }
+
     private static String getNextNewYear(DateValue runningDateValue) {
         String[] parts = runningDateValue.toRawString().split("-");
         String newYear = String.valueOf(Integer.valueOf(parts[0]) + 1);
