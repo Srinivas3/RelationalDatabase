@@ -489,6 +489,7 @@ public class QueryOptimizer extends Eval {
     public Operator replaceWithSelectionViews(Operator root) {
         if (root instanceof SelectionOperator) {
             SelectionOperator selectionOperator = (SelectionOperator) root;
+            selectionOperator = convertOrToUnion(selectionOperator);
             selectionOperator = getUnionedSelectionOperator(selectionOperator);
             Operator selectionChild = selectionOperator.getChild();
             if (selectionChild instanceof TableScan) {
@@ -511,6 +512,37 @@ public class QueryOptimizer extends Eval {
         return root;
     }
 
+    private SelectionOperator convertOrToUnion(SelectionOperator selectionOperator) {
+        Expression whereExp = selectionOperator.getWhereExp();
+        List<Expression> exps = new ArrayList<Expression>();
+        populateAndExpressions(whereExp,exps);
+        OrExpression orExpression = null;
+        for(Expression expression: exps){
+            if (expression instanceof  OrExpression){
+                orExpression = (OrExpression)expression;
+                break;
+            }
+        }
+        if (orExpression == null){
+            return selectionOperator;
+        }
+        Expression leftExp = orExpression.getLeftExpression();
+        Expression rightExp = orExpression.getRightExpression();
+        exps.remove(orExpression);
+        Operator selectionChild = selectionOperator.getChild();
+        SelectionOperator leftSelectionOp = new SelectionOperator(leftExp,selectionChild);
+        SelectionOperator rightSelectionOp = new SelectionOperator(rightExp,selectionChild);
+        selectionOperator.setChild(new UnionOperator(leftSelectionOp,rightSelectionOp));
+        Expression remainingExp = null;
+        if (exps.size() != 0){
+            remainingExp = constructByAnding(exps);
+            selectionOperator.setWhereExp(remainingExp);
+            leftSelectionOp.setWhereExp(new AndExpression(leftExp,remainingExp));
+            rightSelectionOp.setWhereExp(new AndExpression(rightExp,remainingExp));
+        }
+        return selectionOperator;
+    }
+
     private SelectionOperator getUnionedSelectionOperator(SelectionOperator selectionOperator) {
         if (!(selectionOperator.getChild() instanceof TableScan)) {
             return selectionOperator;
@@ -520,14 +552,13 @@ public class QueryOptimizer extends Eval {
         List<Expression> rangeColExpressions = new ArrayList<Expression>();
         for (String colName : Utils.rangeScannedCols) {
             for (Expression expression : andExps) {
-                if (expression.toString().contains(colName)) {
                     BinaryExpression binaryExpression = (BinaryExpression)expression;
                     if (isValidRangeScan(binaryExpression)){
-                        rangeColExpressions.add(expression);
+                        if (colName.equalsIgnoreCase(binaryExpression.getLeftExpression().toString())){
+                            rangeColExpressions.add(expression);
+                        }
                     }
-
-                }
-                if (rangeColExpressions.size() == 2) {
+                    if (rangeColExpressions.size() == 2) {
                     break;
                 }
             }
