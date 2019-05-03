@@ -79,21 +79,21 @@ public class ViewBuilder {
     }
 
     public static String getExpressionAsRawString(Expression expression) {
-        if (expression instanceof  PrimitiveValue){
-            if (expression instanceof  DateValue){
-                DateValue dateValue  = (DateValue)expression;
-                return "DATE('"   + dateValue.toRawString() + "')";
+        if (expression instanceof PrimitiveValue) {
+            if (expression instanceof DateValue) {
+                DateValue dateValue = (DateValue) expression;
+                return "DATE('" + dateValue.toRawString() + "')";
             }
             return ((PrimitiveValue) expression).toRawString();
         }
-        if (expression instanceof Function){
-            Function function = (Function)expression;
+        if (expression instanceof Function) {
+            Function function = (Function) expression;
             return function.toString();
         }
-        if (expression instanceof  Column){
+        if (expression instanceof Column) {
             return expression.toString();
         }
-        BinaryExpression binaryExpression = (BinaryExpression)expression;
+        BinaryExpression binaryExpression = (BinaryExpression) expression;
         String leftExpAsRawString = getExpressionAsRawString(binaryExpression.getLeftExpression());
         String rightExpAsRawString = getExpressionAsRawString(binaryExpression.getRightExpression());
         return leftExpAsRawString + " " + binaryExpression.getStringExpression() + " " + rightExpAsRawString;
@@ -103,9 +103,20 @@ public class ViewBuilder {
         buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", "");
         String whereFilter = " WHERE LINEITEM.COMMITDATE < LINEITEM.RECEIPTDATE AND LINEITEM.SHIPDATE < LINEITEM.COMMITDATE";
         buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
+        String[] shipmodes = getShipmodes();
+        for (String shipmode : shipmodes) {
+            String shipmodeFilter = " AND LINEITEM.SHIPMODE = " + shipmode;
+         //   buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
+        }
+    }
+
+    private String[] getShipmodes() {
+        String[] shipmodes = {"MAIL", "RAIL", "FOB", "TRUCK", "AIR", "SHIP", "REG AIR"};
+        return shipmodes;
 
     }
-    private void buildOrderViews(){
+
+    private void buildOrderViews() {
         buildDateViews("ORDERS", "ORDERS.ORDERDATE", "");
     }
 
@@ -150,8 +161,8 @@ public class ViewBuilder {
             preProcessor.flushAndClose(partitionToStreams.get(dateValStr));
         }
         saveViewColDefs(operator.getSchema(), viewNames);
-        for (String viewName: viewNames){
-            saveViewToSchema(viewName,operator);
+        for (String viewName : viewNames) {
+            saveViewToSchema(viewName, operator);
         }
         Expression additionalWhereExp = getAdditionalWhereExp((ProjectionOperator) operator);
         insertViewToExpression(dateToViewName, additionalWhereExp, dateTableColName);
