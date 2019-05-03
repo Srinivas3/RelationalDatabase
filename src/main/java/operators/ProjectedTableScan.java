@@ -53,7 +53,6 @@ public class ProjectedTableScan implements Operator {
             isFirstCall = false;
         }
         if (scannedTuples == totalNumTuples) {
-//            mergeLocalCachedCols();
             return null;
         }
         scannedTuples++;
@@ -94,71 +93,29 @@ public class ProjectedTableScan implements Operator {
     }
 
     private String getStringValue(String tableColName) throws IOException {
-        ByteBuffer byteBuffer = cachedColToByteBuffer.get(tableColName);
+
         int length;
         byte[] byteArr = null;
-        if (byteBuffer != null) {
-            length = byteBuffer.get();
-            byteArr = new byte[length];
-            byteBuffer.get(byteArr);
-            //    System.out.println("reading from byte buffer");
-        } else {
-            //  System.out.println("reading from column store");
-            DataInputStream dataInputStream = colTodataInputStream.get(tableColName);
-            length = (int) dataInputStream.readShort();
-            byteArr = new byte[length];
-            dataInputStream.readFully(byteArr);
-        }
-        ByteBuffer writeByteBuffer = localCachedCols.get(tableColName);
-        if (writeByteBuffer != null) {
-            writeByteBuffer.put((byte) length);
-            writeByteBuffer.put(byteArr);
-        }
+        DataInputStream dataInputStream = colTodataInputStream.get(tableColName);
+        length = (int) dataInputStream.readShort();
+        byteArr = new byte[length];
+        dataInputStream.readFully(byteArr);
         return new String(byteArr);
     }
 
     private double getDoubleValueAndCacheBytes(String tableColName) throws IOException {
-        ByteBuffer byteBuffer = cachedColToByteBuffer.get(tableColName);
-        double val;
-        if (byteBuffer != null) {
-            val = byteBuffer.getDouble();
-        } else {
-            val = colTodataInputStream.get(tableColName).readDouble();
-        }
-        ByteBuffer writeByteBuffer = localCachedCols.get(tableColName);
-        if (writeByteBuffer != null) {
-            writeByteBuffer.putDouble(val);
-        }
+
+        double val = colTodataInputStream.get(tableColName).readDouble();
         return val;
     }
 
 
     private int getIntValueAndCacheBytes(String tableColName) throws IOException {
-        ByteBuffer byteBuffer = cachedColToByteBuffer.get(tableColName);
-        int val;
-        if (byteBuffer != null) {
-            val = byteBuffer.getInt();
-        } else {
-            val = colTodataInputStream.get(tableColName).readInt();
-        }
-        ByteBuffer writeByteBuffer = localCachedCols.get(tableColName);
-        if (writeByteBuffer != null) {
-            writeByteBuffer.putInt(val);
-        }
+
+        int val = colTodataInputStream.get(tableColName).readInt();;
         return val;
     }
 
-
-    private void mergeLocalCachedCols() {
-        if (localCachedCols == null){
-            return;
-        }
-        Set<String> tableColNames = localCachedCols.keySet();
-        for (String tableColName : tableColNames) {
-            Utils.cachedCols.put(tableColName, localCachedCols.get(tableColName).array());
-        }
-        localCachedCols = null;
-    }
 
     private void openDataInputStreams() {
         colTodataInputStream = new HashMap<String, DataInputStream>();
