@@ -489,7 +489,7 @@ public class QueryOptimizer extends Eval {
     public Operator replaceWithSelectionViews(Operator root) {
         if (root instanceof SelectionOperator) {
             SelectionOperator selectionOperator = (SelectionOperator) root;
-//            selectionOperator = getUnionedSelectionOperator(selectionOperator);
+            selectionOperator = getUnionedSelectionOperator(selectionOperator);
             Operator selectionChild = selectionOperator.getChild();
             if (selectionChild instanceof TableScan) {
                 TableScan view = getMatchingSelectionView(selectionOperator, (TableScan) selectionChild);
