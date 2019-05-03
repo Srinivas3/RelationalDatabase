@@ -21,8 +21,6 @@ public class ProjectedTableScan implements Operator {
 
     String tableName;
     Map<String, DataInputStream> colTodataInputStream;
-    Map<String, ByteBuffer> cachedColToByteBuffer;
-    Map<String, ByteBuffer> localCachedCols;
     int totalNumTuples;
     int scannedTuples;
     Set<String> schemaCols;
@@ -104,7 +102,6 @@ public class ProjectedTableScan implements Operator {
     }
 
     private double getDoubleValueAndCacheBytes(String tableColName) throws IOException {
-
         double val = colTodataInputStream.get(tableColName).readDouble();
         return val;
     }
@@ -119,8 +116,6 @@ public class ProjectedTableScan implements Operator {
 
     private void openDataInputStreams() {
         colTodataInputStream = new HashMap<String, DataInputStream>();
-        localCachedCols = new HashMap<String, ByteBuffer>();
-        cachedColToByteBuffer = new HashMap<String, ByteBuffer>();
         Set<String> colsInSchema = schema.keySet();
         for (String tableColName : colsInSchema) {
             try {
@@ -135,13 +130,8 @@ public class ProjectedTableScan implements Operator {
                         int colByteCnt = Utils.colToByteCnt.get(tableColName).intValue();
                         byte[] colCache = new byte[colByteCnt];
                         ByteBuffer byteBuffer = ByteBuffer.wrap(colCache);
-                        localCachedCols.put(tableColName, byteBuffer);
                     }
 
-                } else {
-                    byte[] cachedBytes = Utils.cachedCols.get(tableColName);
-                    ByteBuffer byteBuffer = ByteBuffer.wrap(cachedBytes);
-                    cachedColToByteBuffer.put(tableColName, byteBuffer);
                 }
             } catch (FileNotFoundException e) {
                 e.printStackTrace();

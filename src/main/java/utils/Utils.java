@@ -39,6 +39,7 @@ public class Utils {
 
     public static void populateRangeScanData() {
         rangeScannedCols.add("LINEITEM.RECEIPTDATE");
+        rangeScannedCols.add("LINEITEM.SHIPDATE");
         rangeScannedCols.add("ORDERS.ORDERDATE");
     }
 
