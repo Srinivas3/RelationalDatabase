@@ -52,13 +52,19 @@ public class Utils {
             currMinDate = Constants.MIN_DATE_STR;
         } else {
             DateValue datePrimitiveVal = getDateValueFromFunction((Function) greaterThanEqualsExp.getRightExpression());
-            currMinDate = getNearestPrevNewYear(datePrimitiveVal);
+            currMinDate = getCurrNewYear(datePrimitiveVal);
+            if (currMinDate.compareTo(Constants.MIN_DATE_STR) < 0){
+                currMinDate  = Constants.MIN_DATE_STR;
+            }
         }
         if (minorThanExp == null) {
             currMaxDate = Constants.MAX_DATE_STR;
         } else {
             DateValue datePrimitiveVal = getDateValueFromFunction((Function) minorThanExp.getRightExpression());
             currMaxDate = getNearestNextNewYear(datePrimitiveVal);
+            if (currMaxDate.compareTo(Constants.MAX_DATE_STR) > 0){
+                currMaxDate = Constants.MAX_DATE_STR;
+            }
         }
         List<Expression> rangeExps = new ArrayList<Expression>();
         String runningDate = currMinDate;
@@ -74,15 +80,24 @@ public class Utils {
     }
 
     private static Column getColumn(BinaryExpression basicExpression) {
+        if (basicExpression instanceof AndExpression){
+            return getColumn((BinaryExpression) basicExpression.getLeftExpression());
+        }
         if (basicExpression.getLeftExpression() instanceof Column){
             return (Column)basicExpression.getLeftExpression();
         }
         if (basicExpression.getRightExpression() instanceof  Column){
             return (Column)basicExpression.getRightExpression();
         }
+
         return null;
     }
+    private static String getCurrNewYear(DateValue dateValue){
+        String[] parts = dateValue.toRawString().split("-");
+        String newYear = String.valueOf(Integer.valueOf(parts[0]));
+        return newYear + "-01-01";
 
+    }
     private static String getNextNewYear(DateValue runningDateValue) {
         String[] parts = runningDateValue.toRawString().split("-");
         String newYear = String.valueOf(Integer.valueOf(parts[0]) + 1);
@@ -103,8 +118,8 @@ public class Utils {
             } else if (basicExpression instanceof MinorThanEquals) {
                 Column column = (Column) basicExpression.getLeftExpression();
                 DateValue dateValue = getDateValueFromFunction((Function) basicExpression.getRightExpression());
-                DateValue nearestPrevDateValue = new DateValue(getNearestPrevNewYear(dateValue));
-                Function dateFunction = getDateFunction(dateValue);
+                DateValue nearestNextDateValue = new DateValue(getNextNewYear(dateValue));
+                Function dateFunction = getDateFunction(nearestNextDateValue);
                 return new MinorThan(column, dateFunction);
             } else {
                 return null;

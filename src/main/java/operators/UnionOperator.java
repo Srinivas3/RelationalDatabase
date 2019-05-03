@@ -4,7 +4,7 @@ import net.sf.jsqlparser.expression.PrimitiveValue;
 
 import java.util.Map;
 
-public class UnionOperator implements Operator,DoubleChildOperator {
+public class UnionOperator implements Operator, DoubleChildOperator {
     private Operator leftOperator;
     private Operator rightOperator;
     private boolean isLeftRight;

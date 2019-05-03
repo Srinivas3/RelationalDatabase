@@ -5,6 +5,7 @@ import net.sf.jsqlparser.eval.Eval;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
+import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.*;
@@ -572,6 +573,7 @@ public class QueryOptimizer extends Eval {
     }
 
     private boolean isValidRangeScan(BinaryExpression binaryExpression) {
+
         Expression leftExpression = binaryExpression.getLeftExpression();
         Expression rightExpression = binaryExpression.getRightExpression();
         if (!(leftExpression instanceof  Column)){
@@ -580,7 +582,8 @@ public class QueryOptimizer extends Eval {
         if (!(rightExpression instanceof Function)){
             return false;
         }
-        return true;
+        return (binaryExpression instanceof MinorThan) || (binaryExpression instanceof MinorThanEquals) ||
+                (binaryExpression instanceof GreaterThan) || (binaryExpression instanceof GreaterThanEquals);
     }
 
     private UnionOperator constructByUnioning(List<SelectionOperator> selectionOperators) {
