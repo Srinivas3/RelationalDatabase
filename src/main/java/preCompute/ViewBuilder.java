@@ -108,11 +108,11 @@ public class ViewBuilder {
         buildDateViews("LINEITEM", "LINEITEM.RECEIPTDATE", "");
         String whereFilter = " WHERE LINEITEM.COMMITDATE < LINEITEM.RECEIPTDATE AND LINEITEM.SHIPDATE < LINEITEM.COMMITDATE";
         buildDateViews("LINEITEM", "LINEITEM.RECEIPTDATE", whereFilter);
-        String[] shipmodes = getShipmodes();
-        for (String shipmode : shipmodes) {
-            String shipmodeFilter = " WHERE LINEITEM.SHIPMODE = '" + shipmode + "'";
-            buildDateViews("LINEITEM", "LINEITEM.RECEIPTDATE", shipmodeFilter);
-        }
+//        String[] shipmodes = getShipmodes();
+//        for (String shipmode : shipmodes) {
+//            String shipmodeFilter = " WHERE LINEITEM.SHIPMODE = '" + shipmode + "'";
+//            buildDateViews("LINEITEM", "LINEITEM.RECEIPTDATE", shipmodeFilter);
+//        }
     }
 
     private String[] getShipmodes() {
