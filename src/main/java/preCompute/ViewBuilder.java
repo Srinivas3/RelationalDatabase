@@ -84,6 +84,11 @@ public class ViewBuilder {
                 DateValue dateValue = (DateValue) expression;
                 return "DATE('" + dateValue.toRawString() + "')";
             }
+            if (expression instanceof  StringValue){
+                StringValue stringValue = (StringValue)expression;
+                return stringValue.toString();
+            }
+
             return ((PrimitiveValue) expression).toRawString();
         }
         if (expression instanceof Function) {
@@ -105,8 +110,8 @@ public class ViewBuilder {
         buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
         String[] shipmodes = getShipmodes();
         for (String shipmode : shipmodes) {
-            String shipmodeFilter = " WHERE LINEITEM.SHIPMODE = " + shipmode;
-//            buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
+            String shipmodeFilter = " WHERE LINEITEM.SHIPMODE = '" + shipmode + "'";
+            buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", shipmodeFilter);
         }
     }
 

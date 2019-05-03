@@ -614,6 +614,13 @@ public class QueryOptimizer extends Eval {
         return new TableScan(viewName);
     }
 
+    private void printAvailableViews(List<String> expressionCompatableViews) {
+        System.out.println("printing available views");
+        for (String viewName:expressionCompatableViews){
+            System.out.println(viewName);
+        }
+    }
+
     private boolean isCompatable(Expression viewExpression, Expression selectExpression) {
         List<Expression> viewAndExpressions = new ArrayList<Expression>();
         List<Expression> selectAndExpressions = new ArrayList<Expression>();

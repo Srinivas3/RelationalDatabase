@@ -203,7 +203,7 @@ public class Main {
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
-        while ((tuple = operator.next()) != null) {
+       while ((tuple = operator.next()) != null) {
             StringBuilder sb = new StringBuilder();
             Set<String> keySet = tuple.keySet();
             int i = 0;
