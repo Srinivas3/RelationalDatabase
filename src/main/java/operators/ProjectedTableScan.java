@@ -53,7 +53,7 @@ public class ProjectedTableScan implements Operator {
             isFirstCall = false;
         }
         if (scannedTuples == totalNumTuples) {
-            mergeLocalCachedCols();
+//            mergeLocalCachedCols();
             return null;
         }
         scannedTuples++;

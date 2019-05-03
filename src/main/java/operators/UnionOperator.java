@@ -7,20 +7,32 @@ import java.util.Map;
 public class UnionOperator implements Operator, DoubleChildOperator {
     private Operator leftOperator;
     private Operator rightOperator;
-    private boolean isLeftRight;
+    private boolean isleftExhausted;
 
     public UnionOperator(Operator leftOperator, Operator rightOperator) {
         this.leftOperator = leftOperator;
         this.rightOperator = rightOperator;
-        isLeftRight = false;
+        isleftExhausted = false;
     }
 
     public Map<String, PrimitiveValue> next() {
-        Map<String, PrimitiveValue> tuple = leftOperator.next();
-        if (tuple == null) {
+        Map<String, PrimitiveValue> tuple = null;
+        if (!isleftExhausted){
+            tuple = leftOperator.next();
+            if (tuple == null){
+                isleftExhausted = true;
+            }
+
+        }
+        if (isleftExhausted){
             tuple = rightOperator.next();
         }
         return tuple;
+//        Map<String, PrimitiveValue> tuple = leftOperator.next();
+//        if (tuple == null) {
+//            tuple = rightOperator.next();
+//        }
+//        return tuple;
     }
 
     public void init() {
