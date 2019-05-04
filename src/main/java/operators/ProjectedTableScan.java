@@ -6,7 +6,6 @@ import utils.Constants;
 import utils.Utils;
 
 import java.io.*;
-import java.nio.ByteBuffer;
 import java.util.*;
 
 public class ProjectedTableScan implements Operator {
@@ -20,7 +19,11 @@ public class ProjectedTableScan implements Operator {
     }
 
     String tableName;
-    Map<String, DataInputStream> colTodataInputStream;
+    DataInputStream[] dataInputStreams;
+    List<Iterator<PrimitiveValue>> cachedTuplesIterators;
+    boolean[] isCached;
+    boolean[] isCachable;
+    int numCols;
     int totalNumTuples;
     int scannedTuples;
     Set<String> schemaCols;
@@ -47,36 +50,97 @@ public class ProjectedTableScan implements Operator {
     @Override
     public Map<String, PrimitiveValue> next() {
         if (isFirstCall) {
-            openDataInputStreams();
+            handleFirstCall();
             isFirstCall = false;
         }
         if (scannedTuples == totalNumTuples) {
             return null;
         }
         scannedTuples++;
-
+        int colCounter = 0;
+        int cachedCounter = 0;
+        int onDiskCounter = 0;
         for (String tableColName : schemaCols) {
-            ColumnDefinition columnDefinition = Utils.colToColDef.get(tableColName);
-            String dataType = columnDefinition.getColDataType().getDataType();
-            PrimitiveValue primitiveValue = readPrimitiveValueAndCache(dataType, tableColName);
+            PrimitiveValue primitiveValue;
+            if (isCached[colCounter]) {
+                primitiveValue = cachedTuplesIterators.get(cachedCounter).next();
+                cachedCounter++;
+            } else {
+                ColumnDefinition columnDefinition = Utils.colToColDef.get(tableColName);
+                String dataType = columnDefinition.getColDataType().getDataType();
+                primitiveValue = readPrimitiveValueAndCache(dataType, dataInputStreams[onDiskCounter]);
+                onDiskCounter++;
+                if (isCachable[colCounter]) {
+                    Utils.cachedCols.get(tableColName).add(primitiveValue);
+                }
+            }
             tuple.put(tableColName, primitiveValue);
+            colCounter++;
         }
 
         return tuple;
     }
 
-    private PrimitiveValue readPrimitiveValueAndCache(String dataType, String tableColName) {
+    private void handleFirstCall() {
+
+        numCols = schemaCols.size();
+        isCachable = new boolean[numCols];
+        isCached = new boolean[numCols];
+        int colCounter = 0;
+        int cachedColCounter = 0;
+        int diskColCounter = 0;
+        for (String tableColName : schemaCols) {
+            if (!isView && Utils.cachedCols.containsKey(tableColName)) {
+                isCached[colCounter] = true;
+                isCachable[colCounter] = false;
+                cachedColCounter++;
+            } else {
+                isCached[colCounter] = false;
+                if (!isView && Utils.isCachable(tableColName)) {
+                    isCachable[colCounter] = true;
+                    Utils.cachedCols.put(tableColName, new ArrayList<PrimitiveValue>());
+                } else {
+                    isCachable[colCounter] = false;
+                }
+                diskColCounter++;
+            }
+            colCounter++;
+        }
+        if (diskColCounter != 0) {
+            dataInputStreams = new DataInputStream[diskColCounter];
+            openDataInputStreams();
+        }
+        if (cachedColCounter != 0) {
+            cachedTuplesIterators = new ArrayList<>();
+            initCachedTupleIterators();
+        }
+
+    }
+
+    private void initCachedTupleIterators() {
+        int colCounter = 0;
+        for (String tableColName : schemaCols) {
+            if (isCached[colCounter]) {
+                cachedTuplesIterators.add(Utils.cachedCols.get(tableColName).iterator());
+            }
+        }
+    }
+
+
+
+
+    private PrimitiveValue readPrimitiveValueAndCache(String dataType, DataInputStream dataInputStream) {
         try {
             if (dataType.equalsIgnoreCase("int")) {
-                int val = getIntValueAndCacheBytes(tableColName);
+                int val = getIntValueAndCacheBytes(dataInputStream);
                 return new LongValue(val);
 
             } else if (dataType.equalsIgnoreCase("decimal") || dataType.equalsIgnoreCase("float")) {
-                double val = getDoubleValueAndCacheBytes(tableColName);
+                double val = getDoubleValueAndCacheBytes(dataInputStream);
                 return new DoubleValue(val);
 
             } else {
-                String stringVal = getStringValue(tableColName);
+                String stringVal = getStringValue(dataInputStream);
                 if (dataType.equalsIgnoreCase("date")) {
                     return new DateValue(stringVal);
                 } else {
@@ -90,49 +154,43 @@ public class ProjectedTableScan implements Operator {
         return null;
     }
 
-    private String getStringValue(String tableColName) throws IOException {
+    private String getStringValue(DataInputStream dataInputStream) throws IOException {
 
         int length;
         byte[] byteArr = null;
-        DataInputStream dataInputStream = colTodataInputStream.get(tableColName);
         length = (int) dataInputStream.readShort();
         byteArr = new byte[length];
         dataInputStream.readFully(byteArr);
         return new String(byteArr);
     }
 
-    private double getDoubleValueAndCacheBytes(String tableColName) throws IOException {
-        double val = colTodataInputStream.get(tableColName).readDouble();
+    private double getDoubleValueAndCacheBytes(DataInputStream dataInputStream) throws IOException {
+        double val = dataInputStream.readDouble();
         return val;
     }
 
 
-    private int getIntValueAndCacheBytes(String tableColName) throws IOException {
-
-        int val = colTodataInputStream.get(tableColName).readInt();;
+    private int getIntValueAndCacheBytes(DataInputStream dataInputStream) throws IOException {
+        int val = dataInputStream.readInt();
         return val;
     }
 
 
     private void openDataInputStreams() {
-        colTodataInputStream = new HashMap<String, DataInputStream>();
-        Set<String> colsInSchema = schema.keySet();
-        for (String tableColName : colsInSchema) {
+        int colCounter = 0;
+        int onDiskCounter = 0;
+        for (String tableColName : schemaCols) {
             try {
-                DataInputStream dataInputStream = null;
-                if (!Utils.cachedCols.containsKey(tableColName)) {
+                if (!isCached[colCounter]) {
                     File colFile = new File(Constants.COLUMN_STORE_DIR + "/" + tableName, tableColName);
                     FileInputStream fileInputStream = new FileInputStream(colFile);
                     BufferedInputStream bufferedInputStream = new BufferedInputStream(fileInputStream);
-                    dataInputStream = new DataInputStream(bufferedInputStream);
-                    colTodataInputStream.put(tableColName, dataInputStream);
-                    if (Utils.isCachable(tableColName)) {
-                        int colByteCnt = Utils.colToByteCnt.get(tableColName).intValue();
-                        byte[] colCache = new byte[colByteCnt];
-                        ByteBuffer byteBuffer = ByteBuffer.wrap(colCache);
-                    }
-
+                    DataInputStream dataInputStream = new DataInputStream(bufferedInputStream);
+                    dataInputStreams[onDiskCounter] = dataInputStream;
+                    onDiskCounter++;
                 }
+                colCounter++;
+
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
             }

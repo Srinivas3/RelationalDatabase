@@ -63,6 +63,7 @@ public class Main {
                      root = queryOptimizer.replaceWithSelectionViews(root);
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
+//                    printCacheState(bufferedWriter);
                     long endTime = System.currentTimeMillis();
 //                    bufferedWriter.write("Execution time for query " + String.valueOf(endTime - startTime));
                     bufferedWriter.flush();
@@ -140,7 +141,7 @@ public class Main {
         bufferedWriter.write("Start printing cache state");
         bufferedWriter.newLine();
         for (String tableColName : Utils.cachedCols.keySet()) {
-            bufferedWriter.write(tableColName + " number of bytes " + Utils.cachedCols.get(tableColName).length);
+            bufferedWriter.write(tableColName + " number of primitive values " + Utils.cachedCols.get(tableColName).size());
             bufferedWriter.newLine();
         }
         bufferedWriter.write("finished cache state");

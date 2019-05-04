@@ -22,7 +22,7 @@ public class Utils {
     public static Map<String, PrimaryIndex> colToPrimIndex = new HashMap<String, PrimaryIndex>();
     public static Map<String, TreeMap<PrimitiveValue, List<Integer>>> colToSecIndex =
             new HashMap<String, TreeMap<PrimitiveValue, List<Integer>>>();
-    public static Map<String, byte[]> cachedCols = new HashMap<String, byte[]>();
+    public static Map<String, List<PrimitiveValue>> cachedCols = new HashMap<String, List<PrimitiveValue>>();
     public static Map<String, String> colToIndexType = new HashMap<String, String>();
     public static Map<String, ColumnDefinition> colToColDef = new HashMap<String, ColumnDefinition>();
     public static Map<String, Map<String, Integer>> viewToSchema = new HashMap<String, Map<String, Integer>>();
@@ -213,8 +213,15 @@ public class Utils {
     }
 
     public static boolean isCachable(String tableColName) {
-        return false;
+        String tableName = tableColName.split("\\.")[0];
+        if (!tableName.equalsIgnoreCase("LINEITEM")){
+            return true;
+        }
+        else{
+            return false;
+        }
     }
+
 
 
     public static PrimitiveValue getPrimitiveValue(Expression expression) {
