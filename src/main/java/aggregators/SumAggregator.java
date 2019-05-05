@@ -8,6 +8,10 @@ import net.sf.jsqlparser.schema.PrimitiveType;
 
 public class SumAggregator implements Aggregator {
     PrimitiveValue accum;
+    double db_accum = 0;
+    long lo_accum = 0;
+    String type = null;
+
 
     void SumAggregator(){
         init();
@@ -15,37 +19,39 @@ public class SumAggregator implements Aggregator {
 
     public void init() {
         accum = null;
+        db_accum = 0;
+        lo_accum = 0;
+        type = null;
     }
 
 
     public void fold(PrimitiveValue next) {
-        if (accum == null){
-            accum = next;
-
-        } else {
-            PrimitiveType type = accum.getType();
+             {
+            PrimitiveType type = next.getType();
             if (type.equals(PrimitiveType.DOUBLE)){
+                this.type = "double";
                 try {
-                    double a = accum.toDouble() + next.toDouble();
-                    accum = new DoubleValue(a);
-
+                    db_accum += next.toDouble();
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
             } else if (type.equals(PrimitiveType.LONG)){
+                this.type = "long";
                 try {
-                    long a = accum.toLong() + next.toLong();
-                    accum = new LongValue(a);
+                    lo_accum += next.toLong();
 
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
             }
-
         }
     }
 
     public PrimitiveValue getAggregate() {
-        return accum;
+        if (type.equalsIgnoreCase("double")){
+            return  new DoubleValue(db_accum);
+        } else {
+            return  new LongValue(lo_accum);
+        }
     }
 }

@@ -9,6 +9,7 @@ public class CountAggregator implements Aggregator {
 
     void CountAggregator(){
         init();
+        cntVal = 0;
     }
 
     public void init() {
@@ -17,23 +18,12 @@ public class CountAggregator implements Aggregator {
 
 
     public void fold(PrimitiveValue next) {
-        if(accum == null && next!=null){
-           accum = new LongValue(1);
-//            cntVal = 1;
-        }
-        else if(next != null){
-            try {
-                Long a = accum.toLong()+1;
-                accum = new LongValue(a);
-//                cntVal++;
-            } catch (PrimitiveValue.InvalidPrimitive throwables) {
-                throwables.printStackTrace();
-            }
-        }
+
+        cntVal++;
     }
 
     public PrimitiveValue getAggregate() {
         //return new LongValue(cntVal);
-        return accum;
+        return new LongValue(cntVal);
     }
 }

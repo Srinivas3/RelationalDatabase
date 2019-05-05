@@ -22,6 +22,7 @@ public class TupleAggWrapper extends Eval {
     private Map<String, PrimitiveValue> currTuple;
     Map<String, Integer> schema;
     int aggCnt;
+    Map<String, PrimitiveValue> finalTuple;
 
     public TupleAggWrapper(List<SelectItem> selectItems, Map<String, Integer> schema, int aggCnt) {
         tupleArr = new PrimitiveValue[selectItems.size()];
@@ -29,6 +30,7 @@ public class TupleAggWrapper extends Eval {
         this.selectItems = selectItems;
         this.schema = schema;
         this.aggCnt = aggCnt;
+        this.finalTuple = new LinkedHashMap<String, PrimitiveValue>();
         initializeAggregators(selectItems);
     }
 
@@ -41,7 +43,8 @@ public class TupleAggWrapper extends Eval {
             } else {
                 return new DateValue(this.eval((Expression) args.get(0)).toRawString());
             }
-        } else if ("SUM".equalsIgnoreCase(fn) || "MIN".equalsIgnoreCase(fn) || "MAX".equalsIgnoreCase(fn) || "AVG".equalsIgnoreCase(fn)) {
+        } else if ("SUM".equalsIgnoreCase(fn) || "MIN".equalsIgnoreCase(fn) || "MAX".equalsIgnoreCase(fn)
+                || "AVG".equalsIgnoreCase(fn)) {
             Expression expression = function.getParameters().getExpressions().get(0);
             PrimitiveValue value = eval(expression);
             return value;
@@ -76,7 +79,7 @@ public class TupleAggWrapper extends Eval {
             }
             if (expression instanceof Function) {
                 aggregators[aggItr].fold(primVal);
-                primVal = aggregators[aggItr].getAggregate();
+//                primVal = aggregators[aggItr].getAggregate();
                 aggItr++;
             }
             tupleArr[tupleItr] = primVal;
@@ -104,7 +107,6 @@ public class TupleAggWrapper extends Eval {
     }
 
     public Map<String, PrimitiveValue> getFinalTuple() {
-        Map<String, PrimitiveValue> finalTuple = new LinkedHashMap<String, PrimitiveValue>();
         Set<String> colNames = schema.keySet();
         for (String colName : colNames) {
             PrimitiveValue colVal = tupleArr[schema.get(colName)];
@@ -115,6 +117,8 @@ public class TupleAggWrapper extends Eval {
         }
         return finalTuple;
     }
+
+
 
 
 }

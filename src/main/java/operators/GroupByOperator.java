@@ -37,6 +37,7 @@ public class GroupByOperator extends Eval implements Operator,SingleChildOperato
     private OrderByOperator orderedChild;
     private TupleAggWrapper tupleAggWrapperForSort;
     private String subquery_alias;
+    Map<String, PrimitiveValue> finalTuple;
 
     public GroupByOperator(List<Column> groupByColumns, List<SelectItem> selectItems, Operator operator,String subquery_alias) {
         this.child = operator;
@@ -45,6 +46,7 @@ public class GroupByOperator extends Eval implements Operator,SingleChildOperato
         createSchema(selectItems);
         isFirstCall = true;
         this.subquery_alias = subquery_alias;
+        this.finalTuple = new LinkedHashMap<String, PrimitiveValue>();
     }
 
     private void createSchema(List<SelectItem> selectItems) {
@@ -121,6 +123,7 @@ public class GroupByOperator extends Eval implements Operator,SingleChildOperato
         }
         prevTuple = currTuple;
         return tupleAggWrapperForSort.getFinalTuple();
+        // TODO change finaltuple of ondiskgroupby
 
     }
 
@@ -160,12 +163,36 @@ public class GroupByOperator extends Eval implements Operator,SingleChildOperato
     }
 
 
+//    private Map<String, PrimitiveValue> emit() {
+//        if (tupleAggWrapperIterator.hasNext()) {
+//            return tupleAggWrapperIterator.next().getFinalTuple();
+//        } else {
+//            return null;
+//        }
+//    }
+
     private Map<String, PrimitiveValue> emit() {
+        Iterator<String> colIterator = schema.keySet().iterator();
+        int aggCnt=0;
+        int colCnt=0;
         if (tupleAggWrapperIterator.hasNext()) {
-            return tupleAggWrapperIterator.next().getFinalTuple();
+            TupleAggWrapper tupleAggWrapper = tupleAggWrapperIterator.next();
+            for (SelectItem selectItem : selectItems) {
+                Expression expression = ((SelectExpressionItem) selectItem).getExpression();
+                if(expression instanceof Function){
+                  finalTuple.put(colIterator.next(),tupleAggWrapper.aggregators[aggCnt].getAggregate());
+                  aggCnt++;
+                }
+                else{
+                    finalTuple.put(colIterator.next(),tupleAggWrapper.tupleArr[colCnt]);
+                }
+                colCnt++;
+            }
+            return finalTuple;
         } else {
             return null;
         }
+
     }
 
     private String getGroupHash() {

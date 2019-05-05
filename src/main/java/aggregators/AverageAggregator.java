@@ -6,41 +6,41 @@ import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.schema.PrimitiveType;
 
 public class AverageAggregator implements Aggregator {
-    PrimitiveValue sum_accum, count_accum;
+//    PrimitiveValue sum_accum, count_accum;
+    long lsum_accum = 0;
+    double dsum_accum = 0;
+    long count = 0;
+    String type = null;
 
     void SumAggregator(){
         init();
     }
 
     public void init() {
-        sum_accum = null;
-        count_accum = null;
+        long lsum_accum = 0;
+        double dsum_accum = 0;
+        long count = 0;
+        String type = null;
     }
 
 
     public void fold(PrimitiveValue next) {
-        if (sum_accum == null){
-            sum_accum = next;
-            count_accum = new LongValue(1);
-        } else {
-            PrimitiveType type = sum_accum.getType();
+         {
+             PrimitiveType type = next.getType();
             if (type.equals(PrimitiveType.DOUBLE)){
+                this.type = "double";
                 try {
-                    double a = sum_accum.toDouble() + next.toDouble();
-                    sum_accum = new DoubleValue(a);
-                    Long b = count_accum.toLong()+1;
-                    count_accum = new LongValue(b);
+                    dsum_accum += + next.toDouble();
+                    count++;
 
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
             } else if (type.equals(PrimitiveType.LONG)){
+                this.type = "long";
                 try {
-                    long a = sum_accum.toLong() + next.toLong();
-                    sum_accum = new LongValue(a);
-                    Long b = count_accum.toLong()+1;
-                    count_accum = new LongValue(b);
-
+                    lsum_accum += next.toLong();
+                    count++;
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
@@ -51,13 +51,12 @@ public class AverageAggregator implements Aggregator {
     }
 
     public PrimitiveValue getAggregate() {
-        double a=0;
-        try {
-            a = sum_accum.toDouble()/count_accum.toDouble();
 
-        } catch (PrimitiveValue.InvalidPrimitive throwables) {
-            throwables.printStackTrace();
-        }
-        return new DoubleValue(a);
+            if (this.type.equalsIgnoreCase("double")){
+                return new DoubleValue(dsum_accum/count);
+            } else {
+                return new DoubleValue(lsum_accum* 1.0/count);
+            }
+
     }
 }

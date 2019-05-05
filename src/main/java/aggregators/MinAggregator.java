@@ -8,46 +8,63 @@ import net.sf.jsqlparser.schema.PrimitiveType;
 
 public class MinAggregator implements Aggregator {
 
-    PrimitiveValue accum;
+    double db_accum = Long.MAX_VALUE;
+    long lo_accum = Long.MAX_VALUE;
+    String st_accum = null;
+    String type = null;
 
-    void MinAggregator(){
+    void MaxAggregator(){
         init();
     }
 
     public void init() {
-        accum = null;
+        db_accum = Long.MAX_VALUE;
+        lo_accum = Long.MAX_VALUE;
+        st_accum = null;
+        type = null;
     }
 
     public void fold(PrimitiveValue next) {
-        if (accum == null){
-            accum = next;
-
-        } else {
-            PrimitiveType type = accum.getType();
+        {
+            PrimitiveType type = next.getType();
             if (type.equals(PrimitiveType.DOUBLE)){
+                this.type = "double";
                 try {
-                    double a = accum.toDouble() < next.toDouble() ? accum.toDouble() : next.toDouble();
-                    accum = new DoubleValue(a);
+                    double next_double = next.toDouble();
+                    this.db_accum = this.db_accum < next_double ? this.db_accum : next_double;
 
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
             } else if (type.equals(PrimitiveType.LONG)){
+                this.type = "long";
                 try {
-                    long a = accum.toLong() < next.toLong() ? accum.toLong() : next.toLong();
-                    accum = new LongValue(a);
+                    long next_long = next.toLong();
+                    this.lo_accum = this.lo_accum < next_long ? this.lo_accum : next_long;
 
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
-            } else {
-                String a = accum.toRawString().compareTo(next.toRawString()) < 0 ? accum.toRawString() : next.toRawString();
-                accum = new StringValue(a);
+            }else {
+                this.type = "string";
+                if (st_accum == null){
+                    st_accum = next.toRawString();
+                } else {
+                    String next_string = next.toRawString();
+                    st_accum = st_accum.compareTo(next_string) < 0 ? st_accum : next_string;
+                }
+
             }
 
         }
     }
     public PrimitiveValue getAggregate() {
-        return accum;
+        if (type.equalsIgnoreCase("double")){
+            return  new DoubleValue(db_accum);
+        } else if (type.equalsIgnoreCase("long")){
+            return  new LongValue(lo_accum);
+        } else {
+            return  new StringValue(st_accum);
+        }
     }
 }
