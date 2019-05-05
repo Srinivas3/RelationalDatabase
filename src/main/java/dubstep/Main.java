@@ -79,6 +79,9 @@ public class Main {
                     createStmnts++;
                     if (createStmnts == 8) {
                         new ViewBuilder().buildViews();
+                        for (String key : Utils.cachedCols.keySet()){
+                            System.out.println(key);
+                        }
                     }
                 } else {
                     bufferedWriter.write("Invalid Query");
