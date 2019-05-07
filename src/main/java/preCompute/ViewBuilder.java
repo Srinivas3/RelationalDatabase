@@ -110,6 +110,15 @@ public class ViewBuilder {
         buildDateViews("LINEITEM", "LINEITEM.RECEIPTDATE", whereFilter);
         buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", "");
         buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
+        buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter);
+        String whereFilter1 = " WHERE LINEITEM.COMMITDATE < LINEITEM.RECEIPTDATE AND LINEITEM.SHIPDATE < LINEITEM.COMMITDATE AND LINEITEM.SHIPMODE = 'RAIL' ";
+        String whereFilter2 = " WHERE LINEITEM.COMMITDATE < LINEITEM.RECEIPTDATE AND LINEITEM.SHIPDATE < LINEITEM.COMMITDATE AND LINEITEM.SHIPMODE = 'MAIL' ";
+        String whereFilter3 = " WHERE LINEITEM.COMMITDATE < LINEITEM.RECEIPTDATE AND LINEITEM.SHIPDATE < LINEITEM.COMMITDATE AND LINEITEM.SHIPMODE = 'SHIP' ";
+        String whereFilter4 = " WHERE LINEITEM.COMMITDATE < LINEITEM.RECEIPTDATE AND LINEITEM.SHIPDATE < LINEITEM.COMMITDATE AND LINEITEM.SHIPMODE = 'TRUCK' ";
+        buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter1);
+        buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter2);
+        buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter3);
+        buildDateViews("LINEITEM", "LINEITEM.SHIPDATE", whereFilter4);
 //
 //        String[] shipmodes = getShipmodes();
 //        for (String shipmode : shipmodes) {
