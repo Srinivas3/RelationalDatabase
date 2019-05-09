@@ -213,18 +213,7 @@ public class Utils {
     }
 
     public static boolean isCachable(String tableColName) {
-
         return false;
-
-//        String tableName = tableColName.split("\\.")[0];
-//        if (!(tableName.equalsIgnoreCase("LINEITEM")||
-//                tableName.equalsIgnoreCase("ORDERS"))){
-//
-//            return true;
-//        }
-//        else{
-//            return false;
-//        }
     }
 
 

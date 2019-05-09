@@ -42,23 +42,11 @@ public class ViewBuilder {
     }
 
     public void buildViews() {
+        /*
         buildLineItemViews();
         buildOrderViews();
-        /*
-        addQueries();
-        writeQueriesToDisk();
-        File viewQueriesFile = new File(queriesFile);
-        try {
-            FileInputStream fileInputStream = new FileInputStream(viewQueriesFile);
-            runQueries(fileInputStream);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        */
         saveViewNumLines();
-        saveViewToExps();
+        saveViewToExps();*/
     }
 
     private void saveViewToExps() {
