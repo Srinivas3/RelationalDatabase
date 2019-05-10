@@ -1,9 +1,6 @@
 package aggregators;
 
-import net.sf.jsqlparser.expression.DoubleValue;
-import net.sf.jsqlparser.expression.LongValue;
-import net.sf.jsqlparser.expression.PrimitiveValue;
-import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.PrimitiveType;
 
 public class MinAggregator implements Aggregator {
@@ -13,7 +10,7 @@ public class MinAggregator implements Aggregator {
     String st_accum = null;
     String type = null;
 
-    void MaxAggregator(){
+    void MaxAggregator() {
         init();
     }
 
@@ -27,7 +24,7 @@ public class MinAggregator implements Aggregator {
     public void fold(PrimitiveValue next) {
         {
             PrimitiveType type = next.getType();
-            if (type.equals(PrimitiveType.DOUBLE)){
+            if (type.equals(PrimitiveType.DOUBLE)) {
                 this.type = "double";
                 try {
                     double next_double = next.toDouble();
@@ -36,7 +33,7 @@ public class MinAggregator implements Aggregator {
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
-            } else if (type.equals(PrimitiveType.LONG)){
+            } else if (type.equals(PrimitiveType.LONG)) {
                 this.type = "long";
                 try {
                     long next_long = next.toLong();
@@ -45,9 +42,13 @@ public class MinAggregator implements Aggregator {
                 } catch (PrimitiveValue.InvalidPrimitive throwables) {
                     throwables.printStackTrace();
                 }
-            }else {
-                this.type = "string";
-                if (st_accum == null){
+            } else {
+                if (type.equals(PrimitiveType.DATE)) {
+                    this.type = "date";
+                } else {
+                    this.type = "string";
+                }
+                if (st_accum == null) {
                     st_accum = next.toRawString();
                 } else {
                     String next_string = next.toRawString();
@@ -58,13 +59,17 @@ public class MinAggregator implements Aggregator {
 
         }
     }
+
     public PrimitiveValue getAggregate() {
-        if (type.equalsIgnoreCase("double")){
-            return  new DoubleValue(db_accum);
-        } else if (type.equalsIgnoreCase("long")){
-            return  new LongValue(lo_accum);
+        if (type.equalsIgnoreCase("double")) {
+            return new DoubleValue(db_accum);
+        } else if (type.equalsIgnoreCase("long")) {
+            return new LongValue(lo_accum);
         } else {
-            return  new StringValue(st_accum);
+            if (type.equalsIgnoreCase("date")) {
+                return new DateValue(st_accum);
+            }
+            return new StringValue(st_accum);
         }
     }
 }

@@ -15,5 +15,8 @@ public final class Constants {
     public static final String VIEW_EXPS_DIR = BASE_DIR + "viewExps";
     public static final String MAX_DATE_STR = "1999-01-01";
     public static final String MIN_DATE_STR = "1992-01-01";
+    public static final String MIN_MAX_COL_DIR = BASE_DIR + "minMax";
+    public static final String MIN_FILE_NAME = "minFile";
+    public static final String MAX_FILE_NAME  = "maxFile";
 }
 

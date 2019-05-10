@@ -3,7 +3,6 @@ package preCompute;
 import dubstep.Main;
 import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
 import net.sf.jsqlparser.expression.operators.relational.MinorThan;
 import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
@@ -23,31 +22,257 @@ import utils.Constants;
 import utils.Utils;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.*;
 
-import static utils.Constants.BASE_DIR;
+import static utils.Constants.*;
 
 public class ViewBuilder {
 
     private Join ordersLineItemJoin;
-    private List<String> queries;
     private String queriesFile = "queriesFile";
-    private int viewCnt = 1;
+    private String[] specialColumns = {"ORDERS.ORDERDATE"};
+    private int viewCnt = 0;
+    private static final int PARTITION_SIZE = 4;
     private PreProcessor preProcessor;
+
 
     public ViewBuilder() {
         preProcessor = new PreProcessor();
     }
 
     public void buildViews() {
+        computeStatistics();
+        List<String> queries = null;
+        if (specialColumns != null){
+            queries = getSpecialViewsQueries();
+        }
+        else{
+            queries = getGeneralViewQueries();
+        }
+        writeQueriesToDisk(queries);
+        try {
+            FileInputStream fileInputStream = new FileInputStream(new File(Constants.BASE_DIR,queriesFile));
+            runQueries(fileInputStream);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        saveViewToExps();
+
+
         /*
         buildLineItemViews();
         buildOrderViews();
         saveViewNumLines();
         saveViewToExps();*/
     }
+    private List<String> getSpecialViewsQueries(){
+        return getQueriesForViewsOnCols(Arrays.asList(specialColumns));
+    }
+    private List<String> getQueriesForViewsOnCols(Collection<String> cols){
+        List<String> queries = new ArrayList<String>();
+        for(String rangeCol: cols){
+            List<String> rangeColQueries = getRangeColViewQueries(rangeCol);
+            if (rangeColQueries != null){
+                queries.addAll(rangeColQueries);
+            }
+        }
+        return queries;
+    }
+    private List<String> getGeneralViewQueries(){
+        Set<String> rangeCols = Utils.colToMin.keySet();
+        return getQueriesForViewsOnCols(rangeCols);
+    }
+    private List<String> getRangeColViewQueries(String rangeCol){
+        PrimitiveValue minVal = Utils.colToMin.get(rangeCol);
+        PrimitiveValue maxVal = Utils.colToMax.get(rangeCol);
+        List<PrimitiveValue> partitions = getPartitions(minVal,maxVal);
+        if (partitions == null){
+            return null;
+        }
+        String[] parts = rangeCol.split("\\.");
+        String tableName = parts[0];
+        Column column = Utils.getColumn(rangeCol);
+        List<String> whereConds = new ArrayList<String>();
+        int i,j;
+        int partitionsSize = partitions.size();
+        for(i = 0,j= 1;j<partitionsSize;j++,i++){
+            GreaterThanEquals expression1 = new GreaterThanEquals(column,partitions.get(i));
+            MinorThanEquals expression2 = new MinorThanEquals(column,partitions.get(j));
+            AndExpression andExpression = new AndExpression(expression1,expression2);
+            if (i != 0){
+                whereConds.add(getExpressionAsRawString(expression1));
+            }
+            if (j != partitionsSize-1 ){
+                whereConds.add(getExpressionAsRawString(expression2));
+            }
+            whereConds.add(getExpressionAsRawString(andExpression));
+        }
+        List<String> queries = getQueries(tableName,whereConds);
+        return queries;
+    }
+
+    private List<String> getQueries(String tableName, List<String> whereConds) {
+        List<String> queries = new ArrayList<>();
+        for (String whereCond: whereConds){
+           StringJoiner queryJoiner = new StringJoiner(" ");
+           queryJoiner.add("SELECT");
+           queryJoiner.add(getImportantCols(tableName));
+           queryJoiner.add("FROM");
+           queryJoiner.add(tableName);
+           queryJoiner.add("WHERE");
+           queryJoiner.add(whereCond);
+           queries.add(queryJoiner.toString());
+        }
+        return queries;
+    }
+
+    private List<PrimitiveValue> getPartitions(PrimitiveValue minVal, PrimitiveValue maxVal){
+        try {
+            if (minVal instanceof  DoubleValue){
+                return getPartitions(minVal.toDouble(),maxVal.toDouble());
+            }
+            if (minVal instanceof  LongValue){
+                return getPartitions(minVal.toLong(),maxVal.toLong());
+            }
+            if (minVal instanceof DateValue){
+                return getPartitions((DateValue)minVal,(DateValue)maxVal);
+            }
+
+        }
+        catch (PrimitiveValue.InvalidPrimitive throwables) {
+            throwables.printStackTrace();
+        }
+        return null;
+    }
+
+    private List<PrimitiveValue> getPartitions(long minVal, long maxVal) {
+        long offSet  =  (maxVal-minVal)/5;
+        if (offSet == 0){
+            return null;
+        }
+        List<PrimitiveValue> primitiveValues = new ArrayList<PrimitiveValue>();
+        long curr = minVal;
+        while (curr < maxVal){
+            primitiveValues.add(new LongValue(curr));
+            curr = curr + offSet;
+        }
+        primitiveValues.add(new LongValue(maxVal));
+        return primitiveValues;
+    }
+
+    private List<PrimitiveValue> getPartitions(double minVal, double maxVal){
+        double offSet = (maxVal-minVal)/PARTITION_SIZE;
+        List<PrimitiveValue> primitiveValues = new ArrayList<PrimitiveValue>();
+        double curr = minVal;
+        while (curr < maxVal){
+            primitiveValues.add(new DoubleValue(curr));
+            curr = curr + offSet;
+        }
+        primitiveValues.add(new DoubleValue(maxVal));
+        return primitiveValues;
+    }
+    private List<PrimitiveValue> getPartitions(DateValue minDate, DateValue maxDate){
+        List<PrimitiveValue> longPartitions = null;
+        List<PrimitiveValue> datePartitions = new ArrayList<PrimitiveValue>();
+        String minDateString = minDate.toRawString();
+        String maxDateString = maxDate.toRawString();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        try {
+            Date minJavaDate = sdf.parse(minDateString);
+            Date maxJavaDate = sdf.parse(maxDateString);
+            longPartitions = getPartitions(minJavaDate.getTime(),maxJavaDate.getTime());
+            for (PrimitiveValue primitiveValue: longPartitions){
+                Date date = new Date(primitiveValue.toLong());
+                String dateString = sdf.format(date);
+                datePartitions.add(new DateValue(dateString));
+            }
+        } catch (PrimitiveValue.InvalidPrimitive throwables) {
+            throwables.printStackTrace();
+        } catch (java.text.ParseException e) {
+            e.printStackTrace();
+        }
+        return datePartitions;
+    }
+
+
+
+    private void computeStatistics() {
+        Collection<String> cols = null;
+        if (specialColumns == null){
+            cols = Utils.colToColDef.keySet();
+        }
+        else{
+            cols = Arrays.asList(specialColumns);
+        }
+        for (String col: cols){
+            ColumnDefinition colDef = Utils.colToColDef.get(col);
+            String dataType = colDef.getColDataType().getDataType();
+            boolean isRange = dataType.equalsIgnoreCase("int")
+                    || dataType.equalsIgnoreCase("float")
+                    || dataType.equalsIgnoreCase("decimal")
+                    || dataType.equalsIgnoreCase("date");
+            if (isRange) {
+                populateMinMax(col);
+            }
+        }
+        saveMinMaxToDisk();
+    }
+
+    private void saveMinMaxToDisk() {
+        File minFile = new File(MIN_MAX_COL_DIR,MIN_FILE_NAME);
+        File maxFile = new File(MIN_MAX_COL_DIR,MAX_FILE_NAME);
+        try{
+            BufferedWriter minBufWriter = new BufferedWriter(new FileWriter(minFile));
+            BufferedWriter maxBufWriter = new BufferedWriter(new FileWriter(maxFile));
+            Set<String> cols = Utils.colToMin.keySet();
+            for(String col: cols){
+                minBufWriter.write(col);
+                minBufWriter.write(",");
+                minBufWriter.write(Utils.colToMin.get(col).toRawString());
+                minBufWriter.newLine();
+                maxBufWriter.write(col);
+                maxBufWriter.write(",");
+                maxBufWriter.write(Utils.colToMax.get(col).toRawString());
+                maxBufWriter.newLine();
+            }
+            minBufWriter.flush();
+            minBufWriter.close();
+            maxBufWriter.flush();
+            maxBufWriter.close();
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+    }
+
+
+    private void populateMinMax(String col) {
+      String parts[] = col.split("\\.");
+      String tableName = parts[0];
+      StringJoiner queryJoiner = new StringJoiner(" ");
+      queryJoiner.add("SELECT");
+      String minExp = "MIN(" + col + ") as min";
+      String maxExp = "MAX(" + col + ") as max";
+      queryJoiner.add(minExp);
+      queryJoiner.add(",");
+      queryJoiner.add(maxExp);
+      queryJoiner.add("from");
+      queryJoiner.add(tableName);
+      String query = queryJoiner.toString();
+      Operator operator = buildQueryTree(query);
+      new QueryOptimizer().projectionPushdown(operator);
+      Map<String,PrimitiveValue> minMax = operator.next();
+      Utils.colToMin.put(col,minMax.get("min"));
+      Utils.colToMax.put(col,minMax.get("max"));
+    }
+
 
     private void saveViewToExps() {
         Set<String> viewNames = Utils.viewToExpression.keySet();
@@ -305,15 +530,18 @@ public class ViewBuilder {
         CCJSqlParser ccjSqlParser = new CCJSqlParser(inputStream);
         Statement statement = null;
         int i = 1;
+
         while ((statement = ccjSqlParser.Statement()) != null) {
             Select select = (Select) statement;
             Operator operator = Main.handleSelect(select);
+            QueryOptimizer queryOptimizer = new QueryOptimizer();
+            queryOptimizer.projectionPushdown(operator);
+            operator = queryOptimizer.replaceWithSelectionViews(operator);
             try {
                 writeViewToColumnStore(operator);
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            System.out.println(i + " view built");
             i++;
         }
 
@@ -336,7 +564,6 @@ public class ViewBuilder {
     private void writeViewToColumnStore(Operator operator) {
         String viewName = "view" + ++viewCnt;
         addColDefs(operator.getSchema(), viewName);
-        saveViewToSchema(viewName, operator);
         List<String> tableColNames = new ArrayList<String>();
         tableColNames.addAll(operator.getSchema().keySet());
         DataOutputStream[] dataOutputStreams = preProcessor.openDataOutputStreams(tableColNames, viewName);
@@ -346,6 +573,10 @@ public class ViewBuilder {
             writeTuple(tableColNames, dataOutputStreams, tuple);
             numLines++;
         }
+        ProjectionOperator projectionOperator = (ProjectionOperator)operator;
+        SelectionOperator selectionOperator = (SelectionOperator)projectionOperator.getChild();
+        Utils.viewToExpression.put(viewName,selectionOperator.getWhereExp());
+        saveViewToSchema(viewName, operator);
         Utils.tableToLines.put(viewName, numLines);
         preProcessor.populateTupleCount(viewName);
         preProcessor.flushAndClose(dataOutputStreams);
@@ -379,8 +610,8 @@ public class ViewBuilder {
 
     }
 
-    private void writeQueriesToDisk() {
-        File viewQueriesFile = new File(queriesFile);
+    private void writeQueriesToDisk(List<String> queries) {
+        File viewQueriesFile = new File(BASE_DIR,queriesFile);
         FileWriter fileWriter = null;
         try {
             fileWriter = new FileWriter(viewQueriesFile);
@@ -396,11 +627,6 @@ public class ViewBuilder {
 
 
     }
-
-    private void addQueries() {
-        queries = new ArrayList<String>();
-    }
-
     private Operator buildQueryTree(String query) {
         try {
             String queryFileName = "queryFile";

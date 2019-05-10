@@ -79,6 +79,7 @@ public class Main {
                     createStmnts++;
                     if (createStmnts == 8) {
                         new ViewBuilder().buildViews();
+                        System.out.println("view building complete");
                     }
                 } else {
                     bufferedWriter.write("Invalid Query");
@@ -156,6 +157,7 @@ public class Main {
         new File(Constants.COLUMN_BYTES_DIR).mkdirs();
         new File(Constants.VIEW_SCHEMA_DIR).mkdirs();
         new File(Constants.VIEW_EXPS_DIR).mkdirs();
+        new File(Constants.MIN_MAX_COL_DIR).mkdirs();
     }
 
 //    private static void debugCode() {

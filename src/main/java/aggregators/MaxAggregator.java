@@ -1,9 +1,6 @@
 package aggregators;
 
-import net.sf.jsqlparser.expression.DoubleValue;
-import net.sf.jsqlparser.expression.LongValue;
-import net.sf.jsqlparser.expression.PrimitiveValue;
-import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.*;
 import net.sf.jsqlparser.schema.PrimitiveType;
 
 public class MaxAggregator implements Aggregator {
@@ -46,7 +43,13 @@ public class MaxAggregator implements Aggregator {
                     throwables.printStackTrace();
                 }
             }else {
-                this.type = "string";
+                if (type.equals(PrimitiveType.DATE)){
+                    this.type = "date";
+                }
+                else{
+                    this.type = "string";
+                }
+
                 if (st_accum == null){
                     st_accum = next.toRawString();
                 } else {
@@ -64,6 +67,9 @@ public class MaxAggregator implements Aggregator {
         } else if (type.equalsIgnoreCase("long")){
             return  new LongValue(lo_accum);
         } else {
+            if (type.equalsIgnoreCase("date")){
+                return new DateValue(st_accum);
+            }
             return  new StringValue(st_accum);
         }
     }

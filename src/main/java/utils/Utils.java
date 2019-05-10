@@ -28,7 +28,9 @@ public class Utils {
     public static Map<String, Map<String, Integer>> viewToSchema = new HashMap<String, Map<String, Integer>>();
     public static Map<String, Expression> viewToExpression = new HashMap<String, Expression>();
     public static Set<String> rangeScannedCols = new HashSet<String>();
-
+    public static Map<String,PrimitiveValue> colToMin = new HashMap<String,PrimitiveValue>();
+    public static Map<String,PrimitiveValue> colToMax = new HashMap<String,PrimitiveValue>();
+    public static Map<String,List<PrimitiveValue>> colToDistinct = new HashMap<String,List<PrimitiveValue>>();
     public static boolean isSameTable(String table, String col) {
         String[] partsCol = col.split("\\.");
         if (partsCol.length == 2) {

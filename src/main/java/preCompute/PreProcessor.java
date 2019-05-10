@@ -59,7 +59,6 @@ public class PreProcessor {
             e.printStackTrace();
         }
     }
-
     private void saveColDefsToDisk() {
         List<ColumnDefinition> columnDefinitions = createTableStatement.getColumnDefinitions();
         String tableName = createTableStatement.getTable().getName();

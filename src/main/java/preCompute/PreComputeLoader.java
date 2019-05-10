@@ -3,6 +3,7 @@ package preCompute;
 import Indexes.IndexFactory;
 import Indexes.PrimaryIndex;
 import net.sf.jsqlparser.expression.Expression;
+import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
 import net.sf.jsqlparser.parser.CCJSqlParser;
@@ -31,7 +32,45 @@ public class PreComputeLoader {
         loadColToByteCnt();
         loadViewExps();
         //loadIndexes();
+        loadStatistics();
     }
+
+    private void loadStatistics() {
+        File minFile = new File(Constants.MIN_MAX_COL_DIR,Constants.MIN_FILE_NAME);
+        File maxFile = new File(Constants.MIN_MAX_COL_DIR,Constants.MAX_FILE_NAME);
+        List<String> minLines = getAllLinesFromFile(minFile);
+        List<String> maxLines = getAllLinesFromFile(maxFile);
+        splitAndInsert(minLines,Utils.colToMin);
+        splitAndInsert(maxLines,Utils.colToMax);
+    }
+
+    private void splitAndInsert(List<String> lines, Map<String, PrimitiveValue> map) {
+        for (String line: lines) {
+            String parts[] = line.split(",");
+            String colName = parts[0];
+            String val = parts[1];
+            String dataType = Utils.colToColDef.get(colName).getColDataType().getDataType();
+            PrimitiveValue primitiveValue = Utils.getPrimitiveValue(dataType,val);
+            map.put(colName,primitiveValue);
+        }
+    }
+
+    private List<String> getAllLinesFromFile(File file) {
+        List<String> allLines = new ArrayList<String>();
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(file));
+            String line = null;
+            while((line = bufferedReader.readLine())!= null) {
+                allLines.add(line);
+            }
+        } catch (FileNotFoundException e1) {
+            e1.printStackTrace();
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+        return allLines;
+    }
+
 
     private void loadViewExps() {
         File viewExpsDir = new File(Constants.VIEW_EXPS_DIR);
