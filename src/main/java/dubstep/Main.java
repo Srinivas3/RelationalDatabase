@@ -60,7 +60,7 @@ public class Main {
                     long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
-                     root = queryOptimizer.replaceWithSelectionViews(root);
+//                     root = queryOptimizer.replaceWithSelectionViews(root);
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
 //                    printCacheState(bufferedWriter);
