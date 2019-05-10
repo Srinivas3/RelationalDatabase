@@ -204,6 +204,7 @@ public class Main {
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
+
        while ((tuple = operator.next()) != null) {
             StringBuilder sb = new StringBuilder();
             Set<String> keySet = tuple.keySet();
@@ -220,9 +221,9 @@ public class Main {
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
-//        printOperatorTree(operator, bufferedWriter);
-        bufferedWriter.flush();
 
+        bufferedWriter.flush();
+//        printOperatorTree(operator, bufferedWriter);
     }
 
 
