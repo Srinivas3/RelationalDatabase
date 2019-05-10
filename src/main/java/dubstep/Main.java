@@ -60,7 +60,7 @@ public class Main {
                     long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
-                     root = queryOptimizer.replaceWithSelectionViews(root);
+//                     root = queryOptimizer.replaceWithSelectionViews(root);
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
 //                    printCacheState(bufferedWriter);
@@ -206,6 +206,7 @@ public class Main {
         Map<String, Integer> schema = operator.getSchema();
         Map<String, PrimitiveValue> tuple;
         int counter = 1;
+
        while ((tuple = operator.next()) != null) {
             StringBuilder sb = new StringBuilder();
             Set<String> keySet = tuple.keySet();
@@ -222,9 +223,9 @@ public class Main {
             bufferedWriter.write(sb.toString() + "\n");
             counter++;
         }
-//        printOperatorTree(operator, bufferedWriter);
-        bufferedWriter.flush();
 
+        bufferedWriter.flush();
+//        printOperatorTree(operator, bufferedWriter);
     }
 
 
