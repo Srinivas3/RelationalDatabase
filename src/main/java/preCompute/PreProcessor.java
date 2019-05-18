@@ -228,7 +228,7 @@ public class PreProcessor {
         return colBytesCnts;
     }
 
-    private DataOutputStream[] getDataOutputStreams(List<ColumnDefinition> colDefs, String tableName) {
+    public DataOutputStream[] getDataOutputStreams(List<ColumnDefinition> colDefs, String tableName) {
         List<String> tableColNames = new ArrayList<String>();
         for (ColumnDefinition columnDefinition : colDefs) {
             tableColNames.add(tableName + "." + columnDefinition.getColumnName());
@@ -245,7 +245,7 @@ public class PreProcessor {
         for (String tableColName : tableColNames) {
             File columnFile = new File(tableColDir, tableColName);
             try {
-                FileOutputStream fileOutputStream = new FileOutputStream(columnFile);
+                FileOutputStream fileOutputStream = new FileOutputStream(columnFile,true);
                 BufferedOutputStream bufferedOutputStream = new BufferedOutputStream(fileOutputStream);
                 dataOutputStreams[i] = new DataOutputStream(bufferedOutputStream);
                 i++;
@@ -273,7 +273,7 @@ public class PreProcessor {
     }
 
 
-    private int writeBytes(DataOutputStream dataOutputStream, String colInString, ColumnDefinition columnDefinition) {
+    public int writeBytes(DataOutputStream dataOutputStream, String colInString, ColumnDefinition columnDefinition) {
         String dataType = columnDefinition.getColDataType().getDataType().toLowerCase();
         try {
             if (dataType.equalsIgnoreCase("string") || dataType.equalsIgnoreCase("char") || dataType.equalsIgnoreCase("varchar") || dataType.equalsIgnoreCase("date")) {

@@ -4,12 +4,19 @@ import java.io.*;
 import java.util.*;
 
 import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
+import net.sf.jsqlparser.expression.operators.relational.ItemsList;
+import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import operators.*;
 import buildtree.TreeBuilder;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.parser.ParseException;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
+import net.sf.jsqlparser.statement.insert.Insert;
+import net.sf.jsqlparser.statement.delete.Delete;
+import net.sf.jsqlparser.statement.update.Update;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.select.SelectBody;
 import operators.joins.JoinOperator;
@@ -54,7 +61,7 @@ public class Main {
 
                     if (!isPhaseOne && isFirstSelect) {
                         PreComputeLoader preComputeLoader = new PreComputeLoader();
-                        preComputeLoader.loadSavedState();
+//                        preComputeLoader.loadSavedState();
                         isFirstSelect = false;
                     }
                     long startTime = System.currentTimeMillis();
@@ -81,6 +88,23 @@ public class Main {
                         new ViewBuilder().buildViews();
                         System.out.println("view building complete");
                     }
+                } else if (statement instanceof Insert){
+
+                    insertRowToTable((Insert) statement);
+
+                } else if (statement instanceof Delete){
+
+                    Delete deleteStatement = (Delete) statement;
+                    deleteStatement.getWhere();
+                    deleteStatement.getTable();
+
+                } else if (statement instanceof Update){
+                    Update UpdateStatement = (Update) statement;
+                    UpdateStatement.getWhere();
+                    UpdateStatement.getColumns();
+                    UpdateStatement.getExpressions();
+
+
                 } else {
                     bufferedWriter.write("Invalid Query");
                 }
@@ -91,6 +115,33 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+
+    private static void insertRowToTable(Insert insertStatement) {
+        String tableName = insertStatement.getTable().getName();
+        PreProcessor preProcessor = new PreProcessor();
+        List<Column> columns = insertStatement.getColumns();
+        List<ColumnDefinition> colDefs = new ArrayList<ColumnDefinition>();
+        for(Column column : columns){
+            String tableColName = tableName +"."+ column.getColumnName();
+            colDefs.add(Utils.colToColDef.get(tableColName));
+        }
+        ItemsList itemsList = insertStatement.getItemsList();
+        List<Expression> expressions = null;
+        if(itemsList instanceof ExpressionList){
+            ExpressionList expressionList = (ExpressionList) itemsList;
+            expressions = expressionList.getExpressions();
+        }
+        DataOutputStream[] dataOutputStreams = preProcessor.getDataOutputStreams(colDefs, tableName);
+        for(int i=0;i<colDefs.size();i++){
+            String primValString = ((PrimitiveValue)expressions.get(i)).toRawString();
+            preProcessor.writeBytes(dataOutputStreams[i], primValString,colDefs.get(i));
+        }
+        int numLines = Utils.tableToLines.get(tableName);
+        Utils.tableToLines.put(tableName,++numLines);
+        preProcessor.flushAndClose(dataOutputStreams);
+
     }
 
     private static void printViewExps() {
