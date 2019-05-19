@@ -23,9 +23,7 @@ import operators.joins.JoinOperator;
 import optimizer.QueryOptimizer;
 import preCompute.PreComputeLoader;
 import preCompute.PreProcessor;
-import preCompute.ViewBuilder;
 import utils.Constants;
-import utils.TimeTester;
 import utils.Utils;
 
 public class Main {
@@ -84,19 +82,19 @@ public class Main {
                     preProcessor.preCompute();
                     isPhaseOne = true;
                     createStmnts++;
-                    if (createStmnts == 8) {
-                        new ViewBuilder().buildViews();
-                        System.out.println("view building complete");
-                    }
+                    TableScan baseOperator = new TableScan(createTableStatement.getTable());
+                    Utils.tableToBaseOperator.put(createTableStatement.getTable().getName(), baseOperator);
+
+//                    if (createStmnts == 8) {
+//                        new ViewBuilder().buildViews();
+//                        System.out.println("view building complete");
+//                    }
                 } else if (statement instanceof Insert){
 
-                    insertRowToTable((Insert) statement);
+                    handleInsert((Insert) statement);
 
                 } else if (statement instanceof Delete){
-
-                    Delete deleteStatement = (Delete) statement;
-                    deleteStatement.getWhere();
-                    deleteStatement.getTable();
+                    handleDelete((Delete) statement);
 
                 } else if (statement instanceof Update){
                     Update UpdateStatement = (Update) statement;
@@ -117,32 +115,27 @@ public class Main {
         }
     }
 
-
-    private static void insertRowToTable(Insert insertStatement) {
+    private static void handleInsert(Insert statement) {
+        Insert insertStatement = statement;
         String tableName = insertStatement.getTable().getName();
-        PreProcessor preProcessor = new PreProcessor();
-        List<Column> columns = insertStatement.getColumns();
-        List<ColumnDefinition> colDefs = new ArrayList<ColumnDefinition>();
-        for(Column column : columns){
-            String tableColName = tableName +"."+ column.getColumnName();
-            colDefs.add(Utils.colToColDef.get(tableColName));
-        }
-        ItemsList itemsList = insertStatement.getItemsList();
-        List<Expression> expressions = null;
-        if(itemsList instanceof ExpressionList){
-            ExpressionList expressionList = (ExpressionList) itemsList;
-            expressions = expressionList.getExpressions();
-        }
-        DataOutputStream[] dataOutputStreams = preProcessor.getDataOutputStreams(colDefs, tableName);
-        for(int i=0;i<colDefs.size();i++){
-            String primValString = ((PrimitiveValue)expressions.get(i)).toRawString();
-            preProcessor.writeBytes(dataOutputStreams[i], primValString,colDefs.get(i));
-        }
-        int numLines = Utils.tableToLines.get(tableName);
-        Utils.tableToLines.put(tableName,++numLines);
-        preProcessor.flushAndClose(dataOutputStreams);
-
+        Operator baseOperator = Utils.tableToBaseOperator.get(tableName);
+        InsertOperator insertOperator = new InsertOperator(insertStatement);
+        baseOperator = new UnionOperator(baseOperator, insertOperator);
+        Utils.tableToBaseOperator.put(tableName, baseOperator);
     }
+
+    private static void handleDelete(Delete statement) {
+        Delete deleteStatement = statement;
+        Expression whereExpression = deleteStatement.getWhere();
+        String tableName = deleteStatement.getTable().getName();
+        InverseExpression inverseExpression = new InverseExpression(whereExpression);
+        Operator baseOperator = Utils.tableToBaseOperator.get(tableName);
+        baseOperator = new SelectionOperator(inverseExpression,baseOperator);
+        Utils.tableToBaseOperator.put(tableName, baseOperator);
+    }
+
+
+
 
     private static void printViewExps() {
         Set<String> viewNames = Utils.viewToExpression.keySet();

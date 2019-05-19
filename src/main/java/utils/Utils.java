@@ -8,6 +8,7 @@ import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
+import operators.Operator;
 
 import java.util.*;
 
@@ -31,13 +32,14 @@ public class Utils {
     public static Map<String,PrimitiveValue> colToMin = new HashMap<String,PrimitiveValue>();
     public static Map<String,PrimitiveValue> colToMax = new HashMap<String,PrimitiveValue>();
     public static Map<String,List<PrimitiveValue>> colToDistinct = new HashMap<String,List<PrimitiveValue>>();
+    public static Map<String, Operator> tableToBaseOperator = new HashMap<String, Operator>();
 
-
-    public static Map<String, List<String>> listOfDeletes =  new HashMap<String, List<String>>();
+    public static Map<String, List<Expression>> tableDeleteExpressions =  new HashMap<String, List<Expression>>();
     public static Map<String, List<String>> listOfUpdates =  new HashMap<String, List<String>>();
 
     public static boolean isSameTable(String table, String col) {
         String[] partsCol = col.split("\\.");
+
         if (partsCol.length == 2) {
             return table.equalsIgnoreCase(partsCol[0]);
         }

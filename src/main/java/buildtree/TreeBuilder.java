@@ -1,12 +1,14 @@
 package buildtree;
 
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.statement.insert.Insert;
 import operators.*;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.select.*;
 import operators.joins.JoinOperator;
 import optimizer.QueryOptimizer;
+import utils.Utils;
 
 import java.util.List;
 
@@ -78,7 +80,8 @@ public class TreeBuilder {
             if(table.getName().startsWith("view")){
                 return new TableScan(table.getName());
             }
-            return new TableScan(table);
+//            return new TableScan(table);
+            return cloneBaseOperator(Utils.tableToBaseOperator.get(table.getName()));
         }
         else if (fromItem instanceof SubSelect){
             SubSelect subselect = (SubSelect) fromItem;
@@ -94,6 +97,30 @@ public class TreeBuilder {
             return null;
         }
 
+    }
+
+    private Operator cloneBaseOperator(Operator baseOperator) {
+        if(baseOperator instanceof UnionOperator){
+            UnionOperator unionOperator = (UnionOperator) baseOperator;
+            Operator leftChild = cloneBaseOperator(unionOperator.getLeftChild());
+            Operator rightChild = cloneBaseOperator(unionOperator.getRightChild());
+            return new UnionOperator(leftChild, rightChild);
+        } else if (baseOperator instanceof SelectionOperator){
+            SelectionOperator selectionOperator = (SelectionOperator) baseOperator;
+            Operator child = cloneBaseOperator(selectionOperator.getChild());
+            Expression whereExp = selectionOperator.getWhereExp();
+            return new SelectionOperator(whereExp, child);
+        } else if (baseOperator instanceof InsertOperator){
+            InsertOperator insertOperator = (InsertOperator) baseOperator;
+            Insert insertStatement = insertOperator.getInsertStatement();
+            return new InsertOperator(insertStatement);
+        } else if (baseOperator instanceof TableScan){
+            TableScan tableScanOperator = (TableScan) baseOperator;
+            return new TableScan(tableScanOperator.getTable());
+        }
+        else {
+            return null;
+        }
     }
 
     public Operator handleSelectBody(SelectBody selectBody,String alias){
