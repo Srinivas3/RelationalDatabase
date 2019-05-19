@@ -117,6 +117,10 @@ public class TreeBuilder {
         } else if (baseOperator instanceof TableScan){
             TableScan tableScanOperator = (TableScan) baseOperator;
             return new TableScan(tableScanOperator.getTable());
+        } else if (baseOperator instanceof UpdateOperator){
+            UpdateOperator updateOperator = (UpdateOperator) baseOperator;
+            Operator child = cloneBaseOperator(updateOperator.getChild());
+            return new UpdateOperator(updateOperator.getUpdateStatement(),child);
         }
         else {
             return null;

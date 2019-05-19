@@ -98,9 +98,7 @@ public class Main {
 
                 } else if (statement instanceof Update){
                     Update UpdateStatement = (Update) statement;
-                    UpdateStatement.getWhere();
-                    UpdateStatement.getColumns();
-                    UpdateStatement.getExpressions();
+                    handleUpdate(UpdateStatement);
 
 
                 } else {
@@ -113,6 +111,14 @@ public class Main {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    private static void handleUpdate(Update updateStatement) {
+        String tableName = updateStatement.getTable().getName();
+        Operator baseOperator = Utils.tableToBaseOperator.get(tableName);
+        Operator updateOperator = new UpdateOperator(updateStatement,baseOperator);
+        baseOperator = updateOperator;
+        Utils.tableToBaseOperator.put(tableName, baseOperator);
     }
 
     private static void handleInsert(Insert statement) {
