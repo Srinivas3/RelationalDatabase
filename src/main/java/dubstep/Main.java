@@ -56,7 +56,7 @@ public class Main {
             int createStmnts = 0;
             long startTime = System.currentTimeMillis();
             while ((statement = parser.Statement()) != null) {
-
+                System.err.println(statement);
                 if (statement instanceof Select) {
 
                     if (!isPhaseOne && isFirstSelect) {
