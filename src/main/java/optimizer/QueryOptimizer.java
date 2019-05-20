@@ -226,9 +226,32 @@ public class QueryOptimizer extends Eval {
             return pushDown(selectionOperator, (JoinOperator) child);
         } else if (child instanceof TableScan) {
             return getIndexScan(selectionOperator, (TableScan) child);
-        } else {
+        } else if (child instanceof UnionOperator) {
+            return pushDown(selectionOperator, (UnionOperator) child);
+        } else if (child instanceof SelectionOperator){
+            return pushDown(selectionOperator, (SelectionOperator) child);
+        }else {
+
             return selectionOperator;
         }
+
+    }
+
+    private Operator pushDown(SelectionOperator selectionParent, SelectionOperator selectionChild) {
+        Expression parentWhereExp = selectionParent.getWhereExp();
+        Expression childWhereExp = selectionChild.getWhereExp();
+        AndExpression combinedAndExp = new AndExpression(parentWhereExp, childWhereExp);
+
+        return pushDown(new SelectionOperator(combinedAndExp, selectionChild.getChild()));
+    }
+
+    private Operator pushDown(SelectionOperator selectionOperator, UnionOperator child) {
+        Operator leftChild = child.getLeftChild();
+        Operator rightChild = child.getRightChild();
+        SelectionOperator unionLeftChild = new SelectionOperator(selectionOperator.getWhereExp(), leftChild);
+        SelectionOperator unionRightChild = new SelectionOperator(selectionOperator.getWhereExp(), rightChild);
+
+        return new UnionOperator(pushDown(unionLeftChild), pushDown(unionRightChild));
 
     }
 
