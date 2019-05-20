@@ -180,7 +180,7 @@ public class QueryOptimizer extends Eval {
                 TableScan tableScan = (TableScan) rightChild;
                 doubleChildOperator.setRightChild(new ProjectedTableScan(colsRefered, tableScan.getTableName(), tableScan.isView()));
             }
-        } else if (operator instanceof TableScan) {
+        } else if (operator instanceof TableScan || operator instanceof InsertOperator) {
             return;
         }
         if (operator instanceof SingleChildOperator) {

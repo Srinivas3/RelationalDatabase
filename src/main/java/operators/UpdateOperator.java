@@ -85,7 +85,7 @@ public class UpdateOperator extends Eval implements Operator, SingleChildOperato
 
     @Override
     public void setChild(Operator child) {
-
+        this.child = child;
     }
 
 

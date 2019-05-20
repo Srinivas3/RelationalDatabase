@@ -54,7 +54,9 @@ public class Main {
             List<Statement> statements = new ArrayList<Statement>();
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
             int createStmnts = 0;
+            long startTime = System.currentTimeMillis();
             while ((statement = parser.Statement()) != null) {
+
                 if (statement instanceof Select) {
 
                     if (!isPhaseOne && isFirstSelect) {
@@ -62,7 +64,7 @@ public class Main {
 //                        preComputeLoader.loadSavedState();
                         isFirstSelect = false;
                     }
-                    long startTime = System.currentTimeMillis();
+                    //long startTime = System.currentTimeMillis();
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
 //                     root = queryOptimizer.replaceWithSelectionViews(root);
@@ -73,6 +75,7 @@ public class Main {
 //                    bufferedWriter.write("Execution time for query " + String.valueOf(endTime - startTime));
                     bufferedWriter.flush();
                 } else if (statement instanceof CreateTable) {
+
                     if (!areDirsCreated) {
                         createDirs();
                         areDirsCreated = true;
@@ -85,9 +88,11 @@ public class Main {
                     TableScan baseOperator = new TableScan(createTableStatement.getTable());
                     Utils.tableToBaseOperator.put(createTableStatement.getTable().getName(), baseOperator);
 
+
+
 //                    if (createStmnts == 8) {
-//                        new ViewBuilder().buildViews();
-//                        System.out.println("view building complete");
+//                        long endTime = System.currentTimeMillis();
+//                        bufferedWriter.write("Execution time for create table " + String.valueOf(endTime - startTime));
 //                    }
                 } else if (statement instanceof Insert){
 
@@ -263,8 +268,9 @@ public class Main {
             int i = 0;
             for (String key : keySet) {
                 sb.append(tuple.get(key).toRawString());
-                if (i < keySet.size() - 1)
+                if (i < keySet.size() - 1) {
                     sb.append("|");
+                }
 
                 i += 1;
             }
@@ -290,42 +296,42 @@ public class Main {
         if (operator instanceof ProjectionOperator) {
             ProjectionOperator projectionOperator = (ProjectionOperator) operator;
             projectionOperator.getSchema();
-            bufferedWriter.write("ProjectionOperator with schema: ");
+            bufferedWriter.write(" ProjectionOperator with schema: ");
             printSchema(projectionOperator.getSchema(), bufferedWriter);
             bufferedWriter.newLine();
             printOperatorTree(projectionOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof SelectionOperator) {
             SelectionOperator selectionOperator = (SelectionOperator) operator;
-            bufferedWriter.write("Selection Operator, where condition: " + selectionOperator.getWhereExp().toString());
+            bufferedWriter.write(" Selection Operator, where condition: " + selectionOperator.getWhereExp().toString());
             bufferedWriter.newLine();
             printOperatorTree(selectionOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof JoinOperator) {
             JoinOperator joinOperator = (JoinOperator) operator;
             if (joinOperator.getJoin().isSimple()) {
-                bufferedWriter.write("Simple Join Operator");
+                bufferedWriter.write(" Simple Join Operator");
             } else if (joinOperator.getJoin().isNatural()) {
-                bufferedWriter.write("Natural Join Operator");
+                bufferedWriter.write(" Natural Join Operator");
             } else {
-                bufferedWriter.write("Equi Join on " + joinOperator.getJoin().getOnExpression());
+                bufferedWriter.write(" Equi Join on " + joinOperator.getJoin().getOnExpression());
             }
             bufferedWriter.newLine();
-            bufferedWriter.write("Join left child");
+            bufferedWriter.write(" Join left child");
             bufferedWriter.newLine();
             printOperatorTree(joinOperator.getLeftChild(), bufferedWriter);
-            bufferedWriter.write("Join right child");
+            bufferedWriter.write(" Join right child");
             bufferedWriter.newLine();
             printOperatorTree(joinOperator.getRightChild(), bufferedWriter);
         }
         if (operator instanceof UnionOperator) {
             UnionOperator unionOperator = (UnionOperator) operator;
-            bufferedWriter.write("Union Operator");
+            bufferedWriter.write(" Union Operator");
             bufferedWriter.newLine();
-            bufferedWriter.write("Left Child: ");
+            bufferedWriter.write(" Left Child: ");
             bufferedWriter.newLine();
             printOperatorTree(unionOperator.getLeftChild(), bufferedWriter);
-            bufferedWriter.write("Right Child");
+            bufferedWriter.write(" Right Child");
             printOperatorTree(unionOperator.getRightChild(), bufferedWriter);
             bufferedWriter.newLine();
         }
@@ -333,39 +339,39 @@ public class Main {
 
         if (operator instanceof TableScan) {
             TableScan tableScan = (TableScan) operator;
-            bufferedWriter.write("TableScan Operator on table " + tableScan.getTableName());
+            bufferedWriter.write(" TableScan Operator on table " + tableScan.getTableName());
             bufferedWriter.newLine();
             if (tableScan.isView()) {
-                bufferedWriter.write("View Expression " + Utils.viewToExpression.get(tableScan.getTableName()).toString());
+                bufferedWriter.write(" View Expression " + Utils.viewToExpression.get(tableScan.getTableName()).toString());
                 bufferedWriter.newLine();
             }
         }
         if (operator instanceof ProjectedTableScan) {
             ProjectedTableScan projectedTableScan = (ProjectedTableScan) operator;
-            bufferedWriter.write("Projected table scan operator on table " + projectedTableScan.getTableName() + " with schema: ");
+            bufferedWriter.write(" Projected table scan operator on table " + projectedTableScan.getTableName() + " with schema: ");
             bufferedWriter.newLine();
             printSchema(projectedTableScan.getSchema(), bufferedWriter);
             bufferedWriter.newLine();
             if (projectedTableScan.isView()) {
-                bufferedWriter.write("View Expression is " + Utils.viewToExpression.get(projectedTableScan.getTableName()));
+                bufferedWriter.write(" View Expression is " + Utils.viewToExpression.get(projectedTableScan.getTableName()));
             }
             bufferedWriter.newLine();
         }
         if (operator instanceof InMemoryCacheOperator) {
             InMemoryCacheOperator memoryCacheOperator = (InMemoryCacheOperator) operator;
-            bufferedWriter.write("InMemoryCacheOperator");
+            bufferedWriter.write(" InMemoryCacheOperator");
             bufferedWriter.newLine();
             printOperatorTree(memoryCacheOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof OnDiskCacheOperator) {
             OnDiskCacheOperator diskCacheOperator = (OnDiskCacheOperator) operator;
-            bufferedWriter.write("OnDiskCacheOperator");
+            bufferedWriter.write(" OnDiskCacheOperator");
             bufferedWriter.newLine();
             printOperatorTree(diskCacheOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof GroupByOperator) {
             GroupByOperator groupByOperator = (GroupByOperator) operator;
-            bufferedWriter.write("group by operator with schema:");
+            bufferedWriter.write(" group by operator with schema:");
             bufferedWriter.newLine();
             printSchema(groupByOperator.getSchema(), bufferedWriter);
             bufferedWriter.newLine();
@@ -373,15 +379,27 @@ public class Main {
         }
         if (operator instanceof OrderByOperator) {
             OrderByOperator orderByOperator = (OrderByOperator) operator;
-            bufferedWriter.write("orderby operator");
+            bufferedWriter.write(" orderby operator");
             bufferedWriter.newLine();
             printOperatorTree(orderByOperator.getChild(), bufferedWriter);
         }
         if (operator instanceof LimitOperator) {
             LimitOperator limitOperator = (LimitOperator) operator;
-            bufferedWriter.write("limit operator");
+            bufferedWriter.write(" limit operator");
             bufferedWriter.newLine();
             printOperatorTree(limitOperator.getChild(), bufferedWriter);
+        }
+        if(operator instanceof InsertOperator){
+            InsertOperator insertOperator = (InsertOperator) operator;
+            bufferedWriter.write(" insert operator");
+            bufferedWriter.newLine();
+        }
+
+        if(operator instanceof UpdateOperator){
+            UpdateOperator updateOperator = (UpdateOperator) operator;
+            bufferedWriter.write(" Update operator");
+            bufferedWriter.newLine();
+            printOperatorTree(updateOperator.getChild(), bufferedWriter);
         }
 
     }
