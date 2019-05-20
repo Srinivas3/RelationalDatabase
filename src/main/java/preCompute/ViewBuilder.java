@@ -44,31 +44,31 @@ public class ViewBuilder {
     }
 
     public void buildViews() {
-        computeStatistics();
-        List<String> queries = null;
-        if (specialColumns != null){
-            queries = getSpecialViewsQueries();
-        }
-        else{
-            queries = getGeneralViewQueries();
-        }
-        writeQueriesToDisk(queries);
-        try {
-            FileInputStream fileInputStream = new FileInputStream(new File(Constants.BASE_DIR,queriesFile));
-            runQueries(fileInputStream);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-        saveViewToExps();
+//        computeStatistics();
+//        List<String> queries = null;
+//        if (specialColumns != null){
+//            queries = getSpecialViewsQueries();
+//        }
+//        else{
+//            queries = getGeneralViewQueries();
+//        }
+//        writeQueriesToDisk(queries);
+//        try {
+//            FileInputStream fileInputStream = new FileInputStream(new File(Constants.BASE_DIR,queriesFile));
+//            runQueries(fileInputStream);
+//        } catch (FileNotFoundException e) {
+//            e.printStackTrace();
+//        } catch (ParseException e) {
+//            e.printStackTrace();
+//        }
+//        saveViewToExps();
 
 
-        /*
+
         buildLineItemViews();
         buildOrderViews();
         saveViewNumLines();
-        saveViewToExps();*/
+        saveViewToExps();
     }
     private List<String> getSpecialViewsQueries(){
         return getQueriesForViewsOnCols(Arrays.asList(specialColumns));

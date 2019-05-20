@@ -23,6 +23,7 @@ import operators.joins.JoinOperator;
 import optimizer.QueryOptimizer;
 import preCompute.PreComputeLoader;
 import preCompute.PreProcessor;
+import preCompute.ViewBuilder;
 import utils.Constants;
 import utils.UpdateHandler;
 import utils.Utils;
@@ -69,7 +70,7 @@ public class Main {
 
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
-//                     root = queryOptimizer.replaceWithSelectionViews(root);
+                     root = queryOptimizer.replaceWithSelectionViews(root);
                     queryOptimizer.projectionPushdown(root);
                     displayOutput(root, bufferedWriter);
 //                    printCacheState(bufferedWriter);
@@ -90,12 +91,11 @@ public class Main {
                     TableScan baseOperator = new TableScan(createTableStatement.getTable());
                     Utils.tableToBaseOperator.put(createTableStatement.getTable().getName(), baseOperator);
 
+                    if (createStmnts == 8) {
+                        new ViewBuilder().buildViews();
 
+                    }
 
-//                    if (createStmnts == 8) {
-//                        long endTime = System.currentTimeMillis();
-//                        bufferedWriter.write("Execution time for create table " + String.valueOf(endTime - startTime));
-//                    }
                 } else if (statement instanceof Insert){
 
                     updateHandler.handleInsert((Insert) statement);
