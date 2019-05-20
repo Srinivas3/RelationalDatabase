@@ -115,6 +115,16 @@ public class Utils {
 
     }
 
+    public static void populateAndExpressions(Expression expression, List<Expression> andExpressions) {
+        if (expression instanceof AndExpression) {
+            AndExpression andExpression = (AndExpression) expression;
+            populateAndExpressions(andExpression.getLeftExpression(), andExpressions);
+            populateAndExpressions(andExpression.getRightExpression(), andExpressions);
+        } else {
+            andExpressions.add(expression);
+        }
+    }
+
     public static Expression constructByAdding(List<Expression> expressions) {
         Iterator<Expression> expItr = expressions.iterator();
         Expression finalExp = expItr.next();

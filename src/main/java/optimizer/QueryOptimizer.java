@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.*;
 
 import static utils.Utils.getRangeExpressions;
+import static utils.Utils.populateAndExpressions;
 
 public class QueryOptimizer extends Eval {
     List<String> columnsInExp = new ArrayList<String>();
@@ -462,15 +463,6 @@ public class QueryOptimizer extends Eval {
 
 
 
-    private void populateAndExpressions(Expression expression, List<Expression> andExpressions) {
-        if (expression instanceof AndExpression) {
-            AndExpression andExpression = (AndExpression) expression;
-            populateAndExpressions(andExpression.getLeftExpression(), andExpressions);
-            populateAndExpressions(andExpression.getRightExpression(), andExpressions);
-        } else {
-            andExpressions.add(expression);
-        }
-    }
 
 
     public Operator replaceWithSelectionViews(Operator root) {
