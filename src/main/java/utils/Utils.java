@@ -3,6 +3,7 @@ package utils;
 
 import Indexes.PrimaryIndex;
 import net.sf.jsqlparser.expression.*;
+import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
 import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
 import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.schema.Column;
@@ -33,6 +34,7 @@ public class Utils {
     public static Map<String,PrimitiveValue> colToMax = new HashMap<String,PrimitiveValue>();
     public static Map<String,List<PrimitiveValue>> colToDistinct = new HashMap<String,List<PrimitiveValue>>();
     public static Map<String, Operator> tableToBaseOperator = new HashMap<String, Operator>();
+    public static Map<String, List<Map<String,PrimitiveValue>>> tableToInserts = new HashMap<String, List<Map<String,PrimitiveValue>>>();
 
     public static Map<String, List<Expression>> tableDeleteExpressions =  new HashMap<String, List<Expression>>();
     public static Map<String, List<String>> listOfUpdates =  new HashMap<String, List<String>>();
@@ -111,6 +113,25 @@ public class Utils {
         String newYear = String.valueOf(Integer.valueOf(parts[0]));
         return newYear + "-01-01";
 
+    }
+
+    public static Expression constructByAdding(List<Expression> expressions) {
+        Iterator<Expression> expItr = expressions.iterator();
+        Expression finalExp = expItr.next();
+        while (expItr.hasNext()) {
+            finalExp = new Addition(finalExp, expItr.next());
+        }
+        return finalExp;
+
+    }
+
+    public static  Expression constructByAnding(List<Expression> expressions) {
+        Iterator<Expression> expressionIterator = expressions.iterator();
+        Expression andExpression = expressionIterator.next();
+        while (expressionIterator.hasNext()) {
+            andExpression = new AndExpression(andExpression, expressionIterator.next());
+        }
+        return andExpression;
     }
 
     private static String getNextNewYear(DateValue runningDateValue) {

@@ -24,6 +24,7 @@ import optimizer.QueryOptimizer;
 import preCompute.PreComputeLoader;
 import preCompute.PreProcessor;
 import utils.Constants;
+import utils.UpdateHandler;
 import utils.Utils;
 
 public class Main {
@@ -54,17 +55,18 @@ public class Main {
             List<Statement> statements = new ArrayList<Statement>();
             BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(System.out));
             int createStmnts = 0;
-            long startTime = System.currentTimeMillis();
+//            long startTime = System.currentTimeMillisentTimeMillis();
+            UpdateHandler updateHandler = new UpdateHandler();
             while ((statement = parser.Statement()) != null) {
-                System.err.println(statement);
+//                System.err.println(statement);
                 if (statement instanceof Select) {
-
+                    long startTime = System.currentTimeMillis();
                     if (!isPhaseOne && isFirstSelect) {
                         PreComputeLoader preComputeLoader = new PreComputeLoader();
 //                        preComputeLoader.loadSavedState();
                         isFirstSelect = false;
                     }
-                    //long startTime = System.currentTimeMillis();
+
                     Operator root = handleSelect((Select) statement);
                     QueryOptimizer queryOptimizer = new QueryOptimizer();
 //                     root = queryOptimizer.replaceWithSelectionViews(root);
@@ -72,7 +74,7 @@ public class Main {
                     displayOutput(root, bufferedWriter);
 //                    printCacheState(bufferedWriter);
                     long endTime = System.currentTimeMillis();
-//                    bufferedWriter.write("Execution time for query " + String.valueOf(endTime - startTime));
+//                    bufferedWriter.write("Execution time for queryOptimizery " + String.valueOf(endTime - startTime));
                     bufferedWriter.flush();
                 } else if (statement instanceof CreateTable) {
 
@@ -96,14 +98,14 @@ public class Main {
 //                    }
                 } else if (statement instanceof Insert){
 
-                    handleInsert((Insert) statement);
+                    updateHandler.handleInsert((Insert) statement);
 
                 } else if (statement instanceof Delete){
-                    handleDelete((Delete) statement);
+                    updateHandler.handleDelete((Delete) statement);
 
                 } else if (statement instanceof Update){
                     Update UpdateStatement = (Update) statement;
-                    handleUpdate(UpdateStatement);
+//                    handleUpdate(UpdateStatement);
 
 
                 } else {
@@ -125,26 +127,6 @@ public class Main {
         baseOperator = updateOperator;
         Utils.tableToBaseOperator.put(tableName, baseOperator);
     }
-
-    private static void handleInsert(Insert statement) {
-        Insert insertStatement = statement;
-        String tableName = insertStatement.getTable().getName();
-        Operator baseOperator = Utils.tableToBaseOperator.get(tableName);
-        InsertOperator insertOperator = new InsertOperator(insertStatement);
-        baseOperator = new UnionOperator(baseOperator, insertOperator);
-        Utils.tableToBaseOperator.put(tableName, baseOperator);
-    }
-
-    private static void handleDelete(Delete statement) {
-        Delete deleteStatement = statement;
-        Expression whereExpression = deleteStatement.getWhere();
-        String tableName = deleteStatement.getTable().getName();
-        InverseExpression inverseExpression = new InverseExpression(whereExpression);
-        Operator baseOperator = Utils.tableToBaseOperator.get(tableName);
-        baseOperator = new SelectionOperator(inverseExpression,baseOperator);
-        Utils.tableToBaseOperator.put(tableName, baseOperator);
-    }
-
 
 
 

@@ -5,66 +5,41 @@ import net.sf.jsqlparser.expression.PrimitiveValue;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.ItemsList;
 import net.sf.jsqlparser.schema.Column;
+import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.insert.Insert;
 import preCompute.PreProcessor;
 import utils.Utils;
 
 import java.io.DataOutputStream;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class InsertOperator implements Operator {
 
+    private Table table;
+    private List<Map<String, PrimitiveValue>> insertedTuples;
+    private Iterator<Map<String, PrimitiveValue>> tupleIterator=null;
     Map<String,PrimitiveValue> tuple;
-    boolean isFirstCall;
-    Insert insertStatement;
-
-    public InsertOperator(Insert insertStatement){
-        this.insertStatement = insertStatement;
-        this.tuple = new HashMap<String,PrimitiveValue>();
-        handleInsert(insertStatement);
-        isFirstCall = true;
-    }
 
 
-    private void handleInsert(Insert insertStatement) {
-        String tableName = insertStatement.getTable().getName();
-        PreProcessor preProcessor = new PreProcessor();
-        List<Column> columns = insertStatement.getColumns();
-        List<String> tableColNames = new ArrayList<String>();
-        for(Column column : columns){
-            String tableColName = tableName +"."+ column.getColumnName();
-            tableColNames.add(tableColName);
-        }
-        ItemsList itemsList = insertStatement.getItemsList();
-        List<Expression> expressions = null;
-        if(itemsList instanceof ExpressionList){
-            ExpressionList expressionList = (ExpressionList) itemsList;
-            expressions = expressionList.getExpressions();
-        }
-        int i=0;
-        for(String tableColName : tableColNames){
-            PrimitiveValue primitiveValue = (PrimitiveValue)expressions.get(i);
-            tuple.put(tableColName,primitiveValue);
-            i++;
+    public InsertOperator(Table table){
+        this.table = table;
+        this.insertedTuples = Utils.tableToInserts.get(table.getName());
+        if(insertedTuples!=null){
+            this.tupleIterator = insertedTuples.iterator();
         }
 
-    }
-
-    public Insert getInsertStatement() {
-        return insertStatement;
     }
 
     @Override
     public Map<String, PrimitiveValue> next() {
-        if(isFirstCall){
-            isFirstCall = false;
-            return tuple;
+        if(tupleIterator == null) return null;
+        if(tupleIterator.hasNext()){
+            return tupleIterator.next();
         }
-        else return null;
+        else {
+            return null;
+        }
     }
 
     @Override

@@ -144,7 +144,7 @@ public class QueryOptimizer extends Eval {
                 return;
             }
             List<Expression> expressions = getExpressionsFromSelectItems(selectItems);
-            Expression addedExpression = constructByAdding(expressions);
+            Expression addedExpression = Utils.constructByAdding(expressions);
             try {
                 eval(addedExpression);
             } catch (SQLException e) {
@@ -183,6 +183,8 @@ public class QueryOptimizer extends Eval {
         } else if (operator instanceof TableScan || operator instanceof InsertOperator) {
             return;
         }
+
+
         if (operator instanceof SingleChildOperator) {
             SingleChildOperator singleChildOperator = (SingleChildOperator) operator;
             Operator child = singleChildOperator.getChild();
@@ -281,7 +283,7 @@ public class QueryOptimizer extends Eval {
     private Expression getFilteredCondition(List<Expression> selectAndExpressions, Expression removeExpression) {
         selectAndExpressions.remove(removeExpression);
         if (selectAndExpressions.size() > 0) {
-            return constructByAdding(selectAndExpressions);
+            return Utils.constructByAdding(selectAndExpressions);
         } else {
             return null;
         }
@@ -317,7 +319,7 @@ public class QueryOptimizer extends Eval {
                 return projectionParent;
             }
         }
-        Expression expression = constructByAdding(projectionExpressions);
+        Expression expression = Utils.constructByAdding(projectionExpressions);
         columnsInExp = new ArrayList<String>();
         populateColumnsInExp(expression);
         Map<String, Integer> leftChildSchema = joinChild.getLeftChild().getSchema();
@@ -375,7 +377,7 @@ public class QueryOptimizer extends Eval {
         if (selectAndExpressions.size() == 0) {
             return newJoin;
         } else {
-            Expression andExpression = constructByAnding(selectAndExpressions);
+            Expression andExpression = Utils.constructByAnding(selectAndExpressions);
             selectParent.setWhereExp(andExpression);
             selectParent.setChild(newJoin);
             return selectParent;
@@ -386,7 +388,7 @@ public class QueryOptimizer extends Eval {
         if (equalExpressions.size() == 0) {
             return joinChild;
         }
-        Expression additionalOnExpression = constructByAnding(equalExpressions);
+        Expression additionalOnExpression = Utils.constructByAnding(equalExpressions);
         Join join = joinChild.getJoin();
         if (!join.isSimple()) {
             Expression childJoinOnExpression = join.getOnExpression();
@@ -423,19 +425,12 @@ public class QueryOptimizer extends Eval {
         if (childExps.size() == 0) {
             return;
         }
-        Expression andExpression = constructByAnding(childExps);
+        Expression andExpression = Utils.constructByAnding(childExps);
         SelectionOperator selectionOperator = new SelectionOperator(andExpression, joinChild);
         joinOperator.setChild(leftOrRight, pushDown(selectionOperator));
     }
 
-    private Expression constructByAnding(List<Expression> expressions) {
-        Iterator<Expression> expressionIterator = expressions.iterator();
-        Expression andExpression = expressionIterator.next();
-        while (expressionIterator.hasNext()) {
-            andExpression = new AndExpression(andExpression, expressionIterator.next());
-        }
-        return andExpression;
-    }
+
 
 
     private List<Expression> getChildOnlyExps(Operator child, List<Expression> andExpressions) {
@@ -464,15 +459,7 @@ public class QueryOptimizer extends Eval {
         }
     }
 
-    private Expression constructByAdding(List<Expression> expressions) {
-        Iterator<Expression> expItr = expressions.iterator();
-        Expression finalExp = expItr.next();
-        while (expItr.hasNext()) {
-            finalExp = new Addition(finalExp, expItr.next());
-        }
-        return finalExp;
 
-    }
 
 
     private void populateAndExpressions(Expression expression, List<Expression> andExpressions) {
@@ -533,7 +520,7 @@ public class QueryOptimizer extends Eval {
         selectionOperator.setChild(new UnionOperator(leftSelectionOp,rightSelectionOp));
         Expression remainingExp = null;
         if (exps.size() != 0){
-            remainingExp = constructByAnding(exps);
+            remainingExp = Utils.constructByAnding(exps);
             selectionOperator.setWhereExp(remainingExp);
             leftSelectionOp.setWhereExp(new AndExpression(leftExp,remainingExp));
             rightSelectionOp.setWhereExp(new AndExpression(rightExp,remainingExp));
@@ -587,7 +574,7 @@ public class QueryOptimizer extends Eval {
         }
         Expression remainingWhereExp =  null;
         if (andExps.size() != 0){
-          remainingWhereExp = constructByAnding(andExps);
+          remainingWhereExp = Utils.constructByAnding(andExps);
         }
         TableScan selectionChild = (TableScan) selectionOperator.getChild();
         List<SelectionOperator> selectionOperators = new ArrayList<SelectionOperator>();

@@ -34,18 +34,19 @@ public class ProjectedTableScan implements Operator {
 
     boolean isView;
 
+
     public ProjectedTableScan(Set<String> projectedCols, String tableName, boolean isView) {
         this.tableName = tableName;
         colDefs = Utils.nameToColDefs.get(tableName);
         this.isView = isView;
         setSchema(projectedCols);
         schemaCols = schema.keySet();
-        tuple = new LinkedHashMap<String, PrimitiveValue>();
         isFirstCall = true;
-        totalNumTuples = Utils.tableToLines.get(tableName);
         scannedTuples = 0;
-
+        tuple = new LinkedHashMap<String, PrimitiveValue>();
+        totalNumTuples = Utils.tableToLines.get(tableName);
     }
+
 
     @Override
     public Map<String, PrimitiveValue> next() {
